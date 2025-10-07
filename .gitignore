@@ -37,6 +37,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
+# tool support
+.direnv
+
 # Sensitive / Configuration Data
 # You should typically use a separate mechanism (like environment variables)
 # for configuration, but if local files are needed, ignore them here.
