@@ -1,0 +1,4 @@
+requests
+email_validator
+phonenumbers
+names-generator
