@@ -1,0 +1,314 @@
+from json import JSONDecodeError
+from modules import util, webhooks
+from util import convert_date_format, standardize_gender
+logger = util.logger
+
+GRAPHQL_QUERY = """
+    mutation createClient(
+    $first_name: String!
+    $last_name: String!
+    $email: String!
+    $skipped_email: Boolean
+    $phone_number: String
+    $dont_send_welcome: Boolean
+    $record_identifier: String
+    $dob: String
+    $gender: String
+    ) {
+    createClient(
+        input: {
+        first_name: $first_name
+        last_name: $last_name
+        email: $email
+        skipped_email: $skipped_email
+        phone_number: $phone_number
+        dont_send_welcome: $dont_send_welcome
+        record_identifier: $record_identifier
+        dob: $dob
+        gender: $gender
+        }
+    ) {
+        user {
+        id
+        }
+        messages {
+        field
+        message
+        }
+    }
+    }
+
+"""
+
+####################### NEW #######################
+
+import requests
+import json
+from typing import Optional, Dict, Any, List
+
+# NOTE: Replace this with the actual URL of your secure GraphQL API
+TARGET_GRAPHQL_URL = "https://staging-api.gethealthie.com/graphql"
+
+class Healthie:
+    """
+    A client class for managing authenticated connections and operations 
+    (CREATE, MODIFY, DEACTIVATE, DOCUMENT_UPLOAD) to a GraphQL API endpoint 
+    defined by TARGET_GRAPHQL_URL.
+    """
+
+    def __init__(self, api_key: str):
+        """
+        Initializes the secure GraphQL client with authentication.
+
+        :param api_key: The secret key for authentication.
+        :param auth_scheme: The authorization scheme (e.g., "Bearer"). Defaults to "Bearer".
+        """
+        if not api_key:
+            raise ValueError("API Key must be provided.")
+            
+        self.endpoint = TARGET_GRAPHQL_URL
+        self.api_key = api_key
+
+        self.headers = {
+            # Set the Authorization header using the provided scheme and key
+            "Authorization": f"Basic {self.api_key}",
+            "AuthorizationSource": "API"
+        }
+
+
+    def _execute_request(self, 
+                         query: str, 
+                         variables: Optional[Dict[str, Any]] = None,
+                         timeout: int = 10) -> Dict[str, Any]:
+        """
+        Internal core method to handle the POST request execution, error checking, 
+        and response parsing.
+        """
+        
+        payload: Dict[str, Any] = {"query": query}
+        if variables is not None:
+            payload["variables"] = variables
+            
+        try:
+            response = requests.post(
+                self.endpoint,
+                json=payload,
+                headers=self.headers,
+                timeout=timeout
+            )
+            response.raise_for_status() # Raise exception for 4xx or 5xx status codes
+            
+            data: Dict[str, Any] = response.json()
+            
+            # Check for GraphQL errors
+            if 'errors' in data:
+                error_messages: List[str] = [err.get('message', 'Unknown GraphQL Error') for err in data['errors']]
+                raise ValueError(f"GraphQL Query Error(s): {'; '.join(error_messages)}")
+
+            return data
+
+        except requests.exceptions.RequestException as e:
+            # Catch all requests errors (timeout, connection, http, json decode)
+            # and re-raise them as a single exception type for simplicity.
+            raise requests.exceptions.RequestException(f"API Request Error: {e}")
+
+
+    # --------------------------------------------------------------------------
+    # CRUD Operations (Public Methods)
+    # --------------------------------------------------------------------------
+
+# mutation createClient(
+    # $first_name: String!
+    # $last_name: String!
+    # $email: String!
+    # $skipped_email: Boolean
+    # $phone_number: String
+    # $dont_send_welcome: Boolean
+    # $record_identifier: String
+    # $dob: String
+    # $gender: String
+
+    {
+        user {
+        id
+        }
+        messages {
+        field
+        message
+        }
+    }
+    
+    def create(self, mutation_name: str, input_data: Dict[str, Any], return_fields: str = "id") -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to CREATE a new resource.
+        """
+        # Example mutation structure: createUser(input: $input) { id }
+        mutation = f"""
+            mutation {mutation_name}($input: AnyInput!) {{
+                {mutation_name}(input: $input) {{
+                    {return_fields}
+                }}
+            }}
+        """
+        variables = {"input": input_data}
+        response = self._execute_request(mutation, variables)
+        return response.get('data', {})
+
+    def create_client(row_data):
+        """
+        Makes a GraphQL API call using data from a single row of the CSV.
+
+        Args:
+            row_data (dict): A dictionary representing a single row, where keys
+                            are column headers and values are the row's data.
+        """
+        # Extract variables from the row_data. The keys must match the variable
+        # names in your GRAPHQL_QUERY.
+        #   first_name: $first_name
+        #   last_name: $last_name
+        #   email: $email
+        #   skipped_email: $skipped_email
+        #   phone_number: $phone_number
+        #   dietitian_id: $dietitian_id
+        #   user_group_id: $user_group_id
+        #   dont_send_welcome: $dont_send_welcome
+        #   record_identifier: $record_identifier
+        #   dob: $dob
+        #   gender: $gender
+
+    # cz_mammo_plus_heart.csv
+    # "patientid","masterid","userid","orderid","orderdt","firstname","lastname","dateofbirth","gender","birad","lifetimerisk","lifetimerisknbr","breastdensity","menarcheage","firstchildbirthage","hrtusage","age","height","weight","race","ashkenazijewish","hispanic","brca1probability","brca2probability","populationlifetimerisk","riskreversalpotential","mammogramcompleteddate","breastdensityrmloimageurl","breastdensitylmloimageurl","breastdensityimageurl","breastdensityimagetype","bacscanimageurl","bodyiq","testimonials","email","phonenumber","bac","appttyperefcd","appttypegrpcd","appttyperefnm","appttyperefdesc","cptcd1","cptcd2","cptcd3","modalitynbr","reporttypedesc","reporttype"
+    # cz_mammo_plus.csv
+    # "patientid","masterid","userid","orderid","orderdt","firstname","lastname","dateofbirth","gender","birad","lifetimerisk","lifetimerisknbr","breastdensity","menarcheage","firstchildbirthage","hrtusage","age","height","weight","race","ashkenazijewish","hispanic","brca1probability","brca2probability","populationlifetimerisk","riskreversalpotential","mammogramcompleteddate","breastdensityrmloimageurl","breastdensitylmloimageurl","breastdensityimageurl","breastdensityimagetype",                  "bodyiq","testimonials","email","phonenumber",      "appttyperefcd","appttypegrpcd","appttyperefnm","appttyperefdesc","cptcd1","cptcd2","cptcd3","modalitynbr","reporttypedesc","reporttype"
+
+        variables = {
+            "first_name": row_data.get("firstname"),
+            "last_name": row_data.get("lastname"),
+            "email": row_data.get("email"),
+            "skipped_email": False,
+            "phone_number": row_data.get("phone_number"),
+            "dont_send_welcome": True,
+            "record_identifier": row_data.get("userid"),
+            "dob": convert_date_format(row_data.get("dateofbirth")),
+            "gender": standardize_gender(row_data.get("gender"))
+        }
+
+        # Construct the JSON payload for the GraphQL request
+        payload = {
+            "query": GRAPHQL_QUERY,
+            "variables": variables
+        }
+
+        auth_headers = {
+            "Authorization": f"Basic {API_KEY}",
+            "AuthorizationSource": "API"
+        }
+
+        try:
+            # Make the POST request to the GraphQL endpoint
+            response = requests.post(API_URL, headers=auth_headers, json=payload)
+            response.raise_for_status()  # Raise an HTTPError for bad responses (4xx or 5xx)
+
+            # Parse the JSON response
+            result = response.json()
+
+            if response.ok:
+                print(f"Successfully processed row for {row_data['patientid']}:")
+            else:
+                print(f"Problem processing row for {row_data['patientid']}:")
+            print(json.dumps(result, indent=2))
+            print("-" * 20)
+
+            # Check for GraphQL errors in the response
+            if "errors" in result:
+                print(f"GraphQL errors encountered for {row_data['patientid']}:")
+                for error in result["errors"]:
+                    print(f"  - {error.get('message')}")
+                print("=" * 20)
+
+        except requests.exceptions.RequestException as e:
+            print(f"An error occurred while making the API call for {row_data.get('patientid')}: {e}")
+            print("=" * 20)
+        except Exception as e:
+            print(f"An unexpected error occurred for {row_data.get('patientid')}: {e}")
+            print("=" * 20)
+
+
+    def modify(self, mutation_name: str, input_data: Dict[str, Any], return_fields: str = "success") -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to MODIFY (UPDATE) an existing resource.
+        """
+        # Example mutation structure: updateUser(input: $input) { success }
+        mutation = f"""
+            mutation {mutation_name}($input: AnyInput!) {{
+                {mutation_name}(input: $input) {{
+                    {return_fields}
+                }}
+            }}
+        """
+        variables = {"input": input_data}
+        response = self._execute_request(mutation, variables)
+        return response.get('data', {})
+
+    def deactivate(self, mutation_name: str, resource_id: str, return_fields: str = "success") -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to DEACTIVATE (or delete) a resource by ID.
+        """
+        # Example mutation structure: deactivateUser(id: $id) { success }
+        mutation = f"""
+            mutation {mutation_name}($id: ID!) {{
+                {mutation_name}(id: $id) {{
+                    {return_fields}
+                }}
+            }}
+        """
+        variables = {"id": resource_id}
+        response = self._execute_request(mutation, variables)
+        return response.get('data', {})
+
+    def document_upload(self, upload_mutation: str, file_path: str, resource_id: str) -> Dict[str, Any]:
+        """
+        Handles GraphQL file upload. Note: This implementation is a SIMPLIFIED 
+        placeholder as real GraphQL file uploads (using multipart/form-data) 
+        require complex logic not easily demonstrated here.
+        """
+        print("⚠️ NOTE: Document upload requires dedicated multipart/form-data handling. Using simplified JSON mutation.")
+
+        # Simplified JSON mutation to inform the server about the file
+        mutation = f"""
+            mutation {upload_mutation}($id: ID!, $fileName: String!) {{
+                {upload_mutation}(id: $id, fileName: $fileName)
+            }}
+        """
+        variables = {
+            "id": resource_id,
+            "fileName": file_path.split('/')[-1]
+        }
+        
+        response = self._execute_request(mutation, variables)
+        return response.get('data', {})
+
+# --------------------------------------------------------------------------
+# Example Usage (Only shows initialization due to mock URL)
+# --------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    # --- Configuration ---
+    MOCK_API_KEY = "dummy_secret_key_123"
+
+    print(f"Target API Endpoint: {TARGET_GRAPHQL_URL}")
+    try:
+        # Initialize the client. The URL is automatically pulled from the const.
+        client = SecureGraphQLClient(api_key=MOCK_API_KEY)
+        
+        print("\nClient successfully initialized.")
+        print(f"Authentication Header: {client.headers['Authorization']}")
+        
+        # To actually use this:
+        # result = client.create("createProduct", {"name": "Widget", "price": 10.99}, return_fields="id name")
+        # print(result)
+
+    except ValueError as e:
+        print(f"Configuration Error: {e}")
+    except requests.exceptions.RequestException as e:
+        print(f"API Connection Error: {e}")
