@@ -277,6 +277,31 @@ query users(
             print(e)
         return response.get('data', {})
 
+    def get_signup_url(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+        
+        mutation = """
+        query getUser($id: ID) {
+        user(id: $id) {
+            id
+            name
+            email
+            phone_number
+            set_password_link
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+        except Exception as e:
+            print(e)
+        return response.get('data', {})
+
 # tag-related
 
     def create_tag(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -514,6 +539,65 @@ query users(
 
         return response.get('data', {})
 
+    def list_documents(self, variables: Dict[str, Any]) -> Dict[str, Any]:
+
+
+        inputs = variables
+
+        mutation = """
+        query documents(
+            $offset: Int
+            $keywords: String
+            $folder_id: String
+            $file_types: [String]
+            $file_type: String
+            $sort_by: String
+            $private_user_id: String
+            $viewable_user_id: String
+            $consolidated_user_id: String
+            $filter: String
+            $should_paginate: Boolean
+            $for_template_use: Boolean
+            $provider_id: ID
+        ) {
+            documents(
+                offset: $offset
+                keywords: $keywords
+                folder_id: $folder_id
+                file_types: $file_types
+                file_type: $file_type
+                sort_by: $sort_by
+                private_user_id: $private_user_id
+                viewable_user_id: $viewable_user_id
+                consolidated_user_id: $consolidated_user_id
+                filter: $filter
+                should_paginate: $should_paginate
+                for_template_use: $for_template_use
+                provider_id: $provider_id
+            ) {
+                id
+                display_name
+                file_content_type
+                opens {
+                    id
+                }
+                owner {
+                    id
+                    email
+                }
+                users {
+                    id
+                    email
+                }
+            }
+        }
+        """
+
+
+        response = self._execute_request(mutation, inputs)
+
+        return response.get('data', {})
+
     # def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
 
     #     if variables['display_name'] is None:
@@ -656,4 +740,74 @@ query users(
         return response.get('data', {})
 
         return response.get('data', {})
+
+# task-related
+
+    def create_task(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to CREATE a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+            # assignee_ids · [ID!] · IDs of the users assigned to this task
+            # client_id · String · The identifier of the client (patient) associated with this task
+            # complete · Boolean Optional. Set to true if the Task is already complete
+            # completed_by_id · ID
+            # $content: String 	Content of the Task
+            # created_by_id · String · The ID of the user (provider or staff member) who is listed as creating the task
+            # $due_date: String Optional. A due date of the Task
+            # note_id · ID
+            # $priority: Int 0 or 1
+            # $reminder: TaskReminderInput
+            #   reminder.is_enabled	Set to true to enable the reminder, false otherwise
+            #   reminder.reminder_time	Time, expressed in number of minutes from midnight, to trigger the reminder at
+            #   reminder.interval_type	Frequency of the reminder. Possible options are:
+            #     daily
+            #     weekly
+            #     once - default
+            #   reminder.interval_value	Date when to trigger the reminder
+            # seen · Boolean
+        
+        mutation = """
+        mutation createTask(
+            $assignee_ids: [ID!]
+            $client_id: String
+            $complete: Boolean
+            $completed_by_id: ID
+            $content: String
+            $due_date: String
+            $note_id: ID
+            $priority: Int
+            $reminder: TaskReminderInput
+        ) {
+        createTask(
+            input: {
+            assignee_ids: $assignee_ids
+            client_id: $client_id
+            complete: $complete
+            completed_by_id: $completed_by_id
+            content: $content
+            due_date: $due_date
+            note_id: $note_id
+            priority: $priority
+            reminder: $reminder
+            }
+        ) {
+            task {
+            id
+            }
+            messages {
+            field
+            message
+            }
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+        except Exception as e:
+            print(e)
+        return response.get('data', {})
+    
 

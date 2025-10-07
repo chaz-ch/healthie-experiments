@@ -22,9 +22,7 @@ CLIENTS_WITH_PROVIDER = {
 }
 
 def main():
-    """
-    Main function to read the CSV file and process each row.
-    """
+
     H = Healthie(API_KEY)
     
     for client in CLIENTS_WITH_PROVIDER:
@@ -68,10 +66,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-{'createClient': {'user': {'id': '4053342'}, 'messages': None}}
-{'createClient': {'user': {'id': '4053349'}, 'messages': None}}
-{'createClient': {'user': {'id': '4053351'}, 'messages': None}}
-{'createClient': {'user': {'id': '4053352'}, 'messages': None}}
-
-{'createDocument': {'document': {'id': '601421'}, 'messages': None}}

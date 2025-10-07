@@ -60,7 +60,7 @@ def main():
             "seen": False
         }
         
-        response = H.create_user(variables)
+        response = H.create_task(variables)
         print(response)
 
     except FileNotFoundError:
