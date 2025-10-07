@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / internal files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Environments
+venv/
+env/
+.env
+.ipynb_checkpoints/
+
+# Editors/IDE files (e.g., VS Code, PyCharm)
+.idea/
+.vscode/
+*.swp
+*~
+
+# Test and coverage files
+.coverage
+htmlcov/
+.nox/
+
+# Distribution and build files
+/dist/
+/build/
+*.egg
+*.whl
+
+# Log and database files
+*.log
+*.sqlite3
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Sensitive / Configuration Data
+# You should typically use a separate mechanism (like environment variables)
+# for configuration, but if local files are needed, ignore them here.
+config.ini
+settings.py # If it contains secrets or local-only configurations
