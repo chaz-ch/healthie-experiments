@@ -2,17 +2,14 @@ from modules.healthie import Healthie
 
 
 # --- Configuration ---
-# Your GraphQL API endpoint URL
 API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
 
-# Path to your PDF file
 PDF_FILE_PATH = "test_document.pdf"
 # CSV_FILE_PATH = "cz_mammo_plus.csv"
 # CSV_FILE_PATH = "cz_mammo_plus_heart.csv"
 
 CLIENT_ID = 12345
 PROVIDER_ID = 54321
-
 
 CLIENTS_WITH_PROVIDER = {
     '4053342': 3920603,
