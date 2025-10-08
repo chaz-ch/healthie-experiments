@@ -29,6 +29,8 @@ def main():
         try:
             variables = {
                 'file_path': PDF_FILE_PATH, 
+                'rel_user_id': client,
+                'share_with_rel': False,
                 'clients_ids': client,
                 'display_name': None, 
                 'provider_ids': [f"{CLIENTS_WITH_PROVIDER[client]}"]
