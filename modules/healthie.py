@@ -480,6 +480,8 @@ query users(
         inputs = {
             'file:': None, # Upload
 
+            'rel_user_id': variables['rel_user_id'], 
+            'share_with_rel': variables['share_with_rel'], 
             'display_name:': variables['display_name'], 
             'clients_ids:': variables['clients_ids'],
             'provider_ids:': variables['provider_ids'],
@@ -489,7 +491,9 @@ query users(
 
         mutation = """
         mutation createDocument(
-            $file: Upload, 
+            $file: Upload,
+            $rel_user_id: String,
+            $share_with_rel: Boolean,
             $display_name: String, 
             $clients_ids: String,
             $provider_ids: [String],
@@ -497,10 +501,11 @@ query users(
             ) {
           createDocument(input: { 
             file: $file,
+            rel_user_id: $rel_user_id,
+            share_with_rel: $share_with_rel,
             display_name: $display_name,
             clients_ids: $clients_ids,
             provider_ids: $provider_ids,
-
           }) {
             document {
               id
@@ -809,5 +814,5 @@ query users(
         except Exception as e:
             print(e)
         return response.get('data', {})
-    
+
 
