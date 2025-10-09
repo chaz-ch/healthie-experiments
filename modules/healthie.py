@@ -815,4 +815,51 @@ query users(
             print(e)
         return response.get('data', {})
 
+# Referral-related
 
+    def create_referring_physician(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+mutation createReferringPhysician($input: createReferringPhysicianInput) {
+  createReferringPhysician(input: $input) {
+    duplicated_physician {
+      id
+    }
+    messages {
+      field
+      message
+    }
+    referring_physician {
+      id
+      full_name
+      npi
+    }
+  }
+}
+"""
+
+        try:
+            response = self._execute_request(mutation, input_data)
+        except Exception as e:
+            print(e)
+        return response.get('data', {})
+
+    def create_referral(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+mutation createReferral($input: createReferralInput) {
+  createReferral(input: $input) {
+    messages {
+      field
+      message
+    }
+    referral {
+      id
+    }
+  }
+}
+"""
+
+        try:
+            response = self._execute_request(mutation, input_data)
+        except Exception as e:
+            print(e)
+        return response.get('data', {})

@@ -1,118 +1,11 @@
-import glob, os, re, signal, sys, time
+import glob, os, re, signal, sys, time, random
 from datetime import datetime, timedelta
-# from num2words import num2words
-# from pathvalidate import is_valid_filename, sanitize_filename
-# from plexapi.audio import Album, Track
-# from plexapi.video import Season, Episode, Movie
 from requests.exceptions import HTTPError
-# from tenacity import retry_if_exception
-# from tenacity.wait import wait_base
 from email_validator import validate_email, EmailNotValidError
 import phonenumbers
 from phonenumbers import NumberParseException
 import base64
 
-
-# class TimeoutExpired(Exception):
-# class TimeoutExpired(Exception):
-#     pass
-
-# class LimitReached(Exception):
-#     pass
-
-# class Failed(Exception):
-#     pass
-
-# class FilterFailed(Failed):
-#     pass
-
-# class Continue(Exception):
-#     pass
-
-# class Deleted(Exception):
-#     pass
-
-# class NonExisting(Exception):
-#     pass
-
-# class NotScheduled(Exception):
-#     pass
-
-# class NotScheduledRange(NotScheduled):
-#     pass
-
-
-# class retry_if_http_429_error(retry_if_exception):
-
-#     def __init__(self):
-#         def is_http_429_error(exception: BaseException) -> bool:
-#             return isinstance(exception, HTTPError) and exception.response.status_code == 429
-
-#         super().__init__(predicate=is_http_429_error)
-
-
-# class wait_for_retry_after_header(wait_base):
-#     def __init__(self, fallback):
-#         self.fallback = fallback
-
-#     def __call__(self, retry_state):
-#         exc = retry_state.outcome.exception()
-#         if isinstance(exc, HTTPError):
-#             retry_after = exc.response.headers.get("Retry-After", None)
-#             try:
-#                 if retry_after is not None:
-#                     return int(retry_after)
-#             except (TypeError, ValueError):
-#                 pass
-
-#         return self.fallback(retry_state)
-
-
-# days_alias = {
-#     "monday": 0, "mon": 0, "m": 0,
-#     "tuesday": 1, "tues": 1, "tue": 1, "tu": 1, "t": 1,
-#     "wednesday": 2, "wed": 2, "w": 2,
-#     "thursday": 3, "thurs": 3, "thur": 3, "thu": 3, "th": 3, "r": 3,
-#     "friday": 4, "fri": 4, "f": 4,
-#     "saturday": 5, "sat": 5, "s": 5,
-#     "sunday": 6, "sun": 6, "su": 6, "u": 6
-# }
-# mod_displays = {
-#     "": "is", ".not": "is not", ".is": "is", ".isnot": "is not", ".begins": "begins with", ".ends": "ends with", ".before": "is before", ".after": "is after",
-#     ".gt": "is greater than", ".gte": "is greater than or equal", ".lt": "is less than", ".lte": "is less than or equal", ".regex": "is"
-# }
-# pretty_days = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
-# lower_days = {v.lower(): k for k, v in pretty_days.items()}
-# pretty_months = {
-#     1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
-#     7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
-# }
-# lower_months = {v.lower(): k for k, v in pretty_months.items()}
-# seasons = ["current", "winter", "spring", "summer", "fall"]
-# advance_tags_to_edit = {
-#     "Movie": ["metadata_language", "use_original_title", "credits_detection"],
-#     "Show": ["episode_sorting", "keep_episodes", "delete_episodes", "season_display", "episode_ordering", "metadata_language", "use_original_title", "credits_detection", "audio_language", "subtitle_language", "subtitle_mode"],
-#     "Season": ["audio_language", "subtitle_language", "subtitle_mode"],
-#     "Artist": ["album_sorting"]
-# }
-# tags_to_edit = {
-#     "Movie": ["genre", "label", "collection", "country", "director", "producer", "writer"],
-#     "Video": ["genre", "label", "collection", "country", "director", "producer", "writer"],
-#     "Show": ["genre", "label", "collection"],
-#     "Artist": ["genre", "label", "style", "mood", "country", "collection", "similar_artist"]
-# }
-# collection_mode_options = {
-#     "default": "default", "hide": "hide",
-#     "hide_items": "hideItems", "hideitems": "hideItems",
-#     "show_items": "showItems", "showitems": "showItems"
-# }
-# image_content_types = ["image/png", "image/jpeg", "image/webp"]
-# parental_types = {"Sex & Nudity": "Nudity", "Violence & Gore": "Violence", "Profanity": "Profanity", "Alcohol, Drugs & Smoking": "Alcohol", "Frightening & Intense Scenes": "Frightening"}
-# parental_values = ["None", "Mild", "Moderate", "Severe"]
-# parental_levels = {"none": [], "mild": ["None"], "moderate": ["None", "Mild"], "severe": ["None", "Mild", "Moderate"]}
-# parental_labels = [f"{t}:{v}" for t in parental_types.values() for v in parental_values]
-# previous_time = None
-# start_time = None
 
 def validate_phone_number(number_str, country_code=None):
     """
@@ -239,3 +132,43 @@ def file_to_base64(filepath):
         return f"Error: File not found at {filepath}"
     except Exception as e:
         return f"An error occurred: {e}"
+
+def generate_npi():
+    """
+    Generates a random, valid 10-digit National Provider Identifier (NPI).
+
+    The NPI is generated according to the Luhn algorithm for checksum validation.
+    """
+    # 1. Generate the first 9 digits. The first digit must be between 1 and 8.
+    # The prefix 80840 is a constant part of the NPI calculation.
+    prefix = '80840'
+    
+    # Generate 9 random digits for the main identifier part.
+    # The first digit of an NPI cannot be 0, so we start with a choice from 1-8.
+    first_digit = str(random.randint(1, 8))
+    middle_digits = ''.join([str(random.randint(0, 9)) for _ in range(8)])
+    nine_digits = first_digit + middle_digits
+
+    # 2. Calculate the checksum using the Luhn algorithm.
+    temp_npi = prefix + nine_digits
+    
+    total = 0
+    for i, digit_char in enumerate(reversed(temp_npi)):
+        digit = int(digit_char)
+        # Double every second digit from the right
+        if i % 2 == 1:
+            doubled_digit = digit * 2
+            # If doubling results in a two-digit number, add the digits
+            if doubled_digit > 9:
+                total += (doubled_digit // 10 + doubled_digit % 10)
+            else:
+                total += doubled_digit
+        else:
+            total += digit
+
+    # 3. Find the check digit.
+    # The check digit is the amount needed to round the total up to the nearest 10.
+    check_digit = (10 - (total % 10)) % 10
+
+    # 4. Append the check digit to form the final 10-digit NPI.
+    return nine_digits + str(check_digit)
