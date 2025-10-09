@@ -42,7 +42,6 @@ def random_TCLifetimeRisk():
     
     return random_ID
                 
-
 def random_BIRADS():
 
     random_ID = None
