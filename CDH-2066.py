@@ -6,7 +6,7 @@ import random
 import uuid
 from datetime import datetime
 from modules.healthie import Healthie
-from modules.util import convert_date_format, standardize_gender, is_valid_email, to_boolean_any, validate_phone_number
+from modules.util import convert_date_format, standardize_gender, is_valid_email, to_boolean_any, validate_phone_number, generate_npi
 from names_generator import generate_name
 
 # --- Configuration ---
@@ -175,6 +175,40 @@ def main():
                 #     Referring Provider First Name (Nice to have Phase 1)
                 #     Referring Provider Last Name (Nice to have Phase 1)
                 #     Referring Provider NPI (Nice to have Phase 1)
+
+                variables = {
+                    "input": {
+                        "first_name": generate_name(),
+                        "last_name": generate_name(),
+                        "npi": generate_npi(),
+                    }
+                }
+        
+                response = H.create_referring_physician(variables)
+                print(response)
+                # {'createReferringPhysician': {'duplicated_physician': None, 'messages': None, 'referring_physician': {'id': '42306', 'full_name': 'admiring_chaum competent_knuth', 'npi': '5654222254'}}}
+                try:
+                    if response['duplicated_physician']:
+                        physician_id = response['duplicated_physician']['id']
+                    elif response['referring_physician']:
+                        physician_id = response['referring_physician']['id']
+                    else:
+                        exit()
+                except Exception as e:
+                    print(f"{e}")
+                    exit()
+        
+                variables = {
+                    "input": {
+                        "referral_reason": "initial consult",
+                        "referring_physician_id": physician_id,
+                        "user_id": new_user_id
+                    }
+                }
+
+                response = H.create_referral(variables)
+                print(response)
+                # {"data": {"createReferral": {"messages": null,"referral": {"id": "57421"}}}}
 
     except FileNotFoundError:
         print(f"Error: The file '{CSV_FILE_PATH}' was not found.")
