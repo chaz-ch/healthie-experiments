@@ -175,6 +175,7 @@ def main():
                 #     Referring Provider Last Name (Nice to have Phase 1)
                 #     Referring Provider NPI (Nice to have Phase 1)
 
+                # These are the minimum fields required
                 variables = {
                     "input": {
                         "first_name": generate_name(),
@@ -187,19 +188,20 @@ def main():
                 print(response)
                 # {'createReferringPhysician': {'duplicated_physician': None, 'messages': None, 'referring_physician': {'id': '42306', 'full_name': 'admiring_chaum competent_knuth', 'npi': '5654222254'}}}
                 try:
-                    if response['duplicated_physician']:
-                        physician_id = response['duplicated_physician']['id']
-                    elif response['referring_physician']:
-                        physician_id = response['referring_physician']['id']
+                    if response['createReferringPhysician']['duplicated_physician']:
+                        physician_id = response['createReferringPhysician']['duplicated_physician']['id']
+                    elif response['createReferringPhysician']['referring_physician']:
+                        physician_id = response['createReferringPhysician']['referring_physician']['id']
                     else:
                         exit()
                 except Exception as e:
                     print(f"{e}")
                     exit()
         
+                # reason not required
                 variables = {
                     "input": {
-                        "referral_reason": "initial consult",
+                        # "referral_reason": "initial consult",
                         "referring_physician_id": physician_id,
                         "user_id": new_user_id
                     }
@@ -208,6 +210,15 @@ def main():
                 response = H.create_referral(variables)
                 print(response)
                 # {"data": {"createReferral": {"messages": null,"referral": {"id": "57421"}}}}
+                
+                # send welcome email
+                variables = {
+                    "id": new_user_id,
+                    "resend_welcome": True,
+                }
+                
+                response = H.update_user(variables)
+
 
     except FileNotFoundError:
         print(f"Error: The file '{CSV_FILE_PATH}' was not found.")
