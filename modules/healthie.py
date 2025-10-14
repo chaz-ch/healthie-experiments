@@ -302,6 +302,30 @@ query users(
             print(e)
         return response.get('data', {})
 
+    def get_doc_share_id(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+        
+        mutation = """
+        query getUser($id: ID) {
+        user(id: $id) {
+            id
+            name
+            doc_share_id
+            }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+        except Exception as e:
+            print(e)
+        return response.get('data', {})
+
+
 # tag-related
 
     def create_tag(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -518,9 +542,6 @@ query users(
         }
         """
 
-
-        # inputs["folder_id"] = variables['folder_id']
-
         operations = json.dumps({
             "query": mutation,
             "variables": inputs
@@ -603,83 +624,7 @@ query users(
 
         return response.get('data', {})
 
-    # def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
-
-    #     if variables['display_name'] is None:
-    #         temp_file = Path(variables['file_path'])
-    #         variables['display_name'] = temp_file.stem
-        
-    #     inputs = {
-    #         'file:': None, 
-    #         'display_name:': None, 
-    #         'folder_id:': None,
-    #         'clients_ids:': None,
-
-    #         'care_plan_id:': None,
-    #         'course_id:': None,
-    #         'description:': None,
-    #         'file_string:': None,
-    #         'from_date:': None,
-    #         'from_program_create:': None,
-    #         'generate_ccda_for_rel_user_id:': None,
-    #         'generate_human_readable_ccda_for_rel_user_id:': None,
-    #         'include_in_charting:': None,
-    #         'is_photo_id:': None,
-    #         'metadata:': None,
-    #         'on_form_for_user_id:': None,
-    #         'org_level:': None,
-    #         'payout_id:': None,
-    #         'provider_ids:': None,
-    #         'rcf_id:': None,
-    #         'rel_user_id:': None,
-    #         'report_type:': None,
-    #         'share_users:': None,
-    #         'share_with_rel:': None,
-    #         'to_date': None
-            
-    #     }
-        
-    #     file = open(variables['file_path'], 'rb')
-
-    #     mutation = """
-    #     mutation createNote($input: createNoteInput) {
-    #         createNote(input: $input) {
-    #             messages
-    #             note
-    #         }
-    #     }
-    #     """
-
-    #     inputs["display_name"] = variables['display_name']
-
-    #     # inputs["folder_id"] = variables['folder_id']
-
-    #     cleaned_inputs = {k: v for k, v in inputs.items() if v is not None}
-
-    #     cleaned_inputs["file"] = None
-
-    #     operations = json.dumps({
-    #         "query": mutation,
-    #         "variables": cleaned_inputs
-    #     })
-        
-    #     map = json.dumps({ "0": ["cleaned_inputs.file"] })
-
-    #     data = {
-    #         "operations": operations,
-    #         "map": map
-    #     }
-        
-    #     files = {
-    #         "0" : file
-    #     }
-        
-    #     response = self._execute_upload_request(
-    #         data,
-    #         files
-    #     )
-
-    #     return response.get('data', {})
+# Conversation [chat] related
 
     def create_conversation(self, variables: Dict[str, Any]) -> Dict[str, Any]:
 
@@ -690,63 +635,93 @@ query users(
             createConversation(input: $input) {
                 conversation {
                     id
+                    invitees {
+                        id
+                    }
                     name
+                    owner {
+                        id
+                    }
+                    updated_at
                 }
             }
             }
         """
 
-        # inputs = {
-        #     "name": variables['conversation_name'],
-        #     "owner_id": variables['owner_id'],
-        #     "note": {
-        #         "attached_document": None, # Upload
-        #         "content": None
-        #     },
-        #     "simple_added_users": variables['client_id'],
-        # }
-        
-        inputs = {
+        createConversationInput = {
             "name": variables['conversation_name'],
             "owner_id": variables['owner_id'],
-            "note": None,
-            "simple_added_users": variables['client_id'],
+            "note": {
+                "content": variables['initial_message']
+            },
+            "simple_added_users": variables['simple_added_users']
         }
 
-        # file = open(variables['file_path'], 'rb')
-
-        # inputs["note"]["attached_document"] = None
-
-        # operations = json.dumps({
-        #     "query": mutation,
-        #     "variables": inputs
-        # })
-        
-        # map = json.dumps({ "0": ["inputs.note.attached_document"] })
-
-        # data = {
-        #     "operations": operations,
-        #     "map": map
-        # }
-        
-        # files = {
-        #     "0" : file
-        # }
-        
-        # response = self._execute_request(
-        #     data,
-        #     files
-        # )
-
+        inputs = {
+            "input": createConversationInput
+        }
         try:
             response = self._execute_request(mutation, inputs)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+
+        return None
+
+    def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
+
+        createNoteInput = {
+            "input": {
+                "content": variables['content'],
+                "conversation_id": variables['conversation_id'],
+                "user_id": variables['conversation_id'],
+                "org_chat": variables['org_chat'],
+                "hide_org_chat_confirmation": variables['hide_org_chat_confirmation']
+            }
+        }
+
+        # createNoteInput
+        # {
+        #     attached_audio: Upload
+        #     attached_document: Upload
+        #     attached_image: Upload
+        #     attached_image_string: String
+        #     content: String
+        #     conversation_id: String
+        #     created_at: String
+        #     hide_org_chat_confirmation: Boolean
+        #
+        #     """
+        #     True, if a note create action called in the organization chat context
+        #     """
+        #     org_chat: Boolean
+        #     scheduled_at: String
+        #     updated_at: String
+        #     user_id: String
+        # }
+
+        mutation = """
+        mutation createNote($input: createNoteInput) {
+            createNote(input: $input) {
+                messages {
+                  field
+                  message
+                }
+                note {
+                  id
+                }
+            }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, createNoteInput)
+        except Exception as e:
+            print(e)
 
         return response.get('data', {})
 
-# task-related
+    # task-related
 
     def create_task(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
