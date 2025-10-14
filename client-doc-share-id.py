@@ -11,10 +11,8 @@ from modules.util import convert_date_format, standardize_gender, is_valid_email
 # Your Healthie API Key
 API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
 
-# Path to your CSV file
-CSV_FILE_PATH = "cz_mammo_plus_heart_new4.csv"
-# CSV_FILE_PATH = "cz_mammo_plus.csv"
-# CSV_FILE_PATH = "cz_mammo_plus_heart.csv"
+CHAZ_AS_PATIENT = 4097532
+CHAZ_AS_PROVIDER = 3996427
 
 def main():
 
@@ -26,18 +24,16 @@ def main():
             "id": None
         }
         
-        variables["id"] = '4108931'
+        variables["id"] = str(CHAZ_AS_PATIENT)
 
-        response = H.get_signup_url(variables)
+        response = H.get_doc_share_id(variables)
         print(response)
 
-        variables["id"] = '4053352'
+        variables["id"] = str(CHAZ_AS_PROVIDER)
 
-        response = H.get_signup_url(variables)
+        response = H.get_doc_share_id(variables)
         print(response)
 
-    except FileNotFoundError:
-        print(f"Error: The file '{CSV_FILE_PATH}' was not found.")
     except Exception as e:
         print(f"An error occurred: {e}")
 
