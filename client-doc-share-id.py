@@ -26,12 +26,12 @@ def main():
         
         variables["id"] = str(CHAZ_AS_PATIENT)
 
-        response = H.get_doc_share_id(variables)
+        response = H.get_ids(variables)
         print(response)
 
         variables["id"] = str(CHAZ_AS_PROVIDER)
 
-        response = H.get_doc_share_id(variables)
+        response = H.get_ids(variables)
         print(response)
 
     except Exception as e:

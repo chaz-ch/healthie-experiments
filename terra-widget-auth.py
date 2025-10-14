@@ -9,9 +9,25 @@ TERRA_URL = "https://api.tryterra.co/v2/"
 TERRA_DEV_ID = "cascaidhealth-testing-d1h71YqtMH"
 TERRA_API_KEY = "r_laSpk1CGnVhoxp-Z4gMfLTWqFvyN5C"
 
+TERRA_SUCCESS_URL = "https://cascaid.com"
+TERRA_FAILURE_URL = "https://cascaid.com"
+
 CHAZ_AS_PATIENT = 4097532
 CHAZ_AS_PROVIDER = 3996427
 
+def get_ids(client_id):
+    H = Healthie(API_KEY)
+
+    variables = {
+        "id": str(client_id)
+    }
+    
+    response = H.get_ids(variables)
+    doc_share_id = response['user']['doc_share_id']
+    record_identifier = response['user']['record_identifier']
+    user_name = response['user']['name']
+    
+    return doc_share_id, record_identifier, user_name
 
 def connect_to_terra(healthie_user_id: int):
 
@@ -24,12 +40,14 @@ def connect_to_terra(healthie_user_id: int):
         "X-Api-Key": TERRA_API_KEY
     }
 
+    doc_share_id, record_identifier, user_name = get_ids(healthie_user_id)
+
     TERRA_REQUEST_DATA = {
           "providers": "GARMIN,FITBIT,OURA,WITHINGS,SUUNTO",
           "language": "en",
-          "reference_id": healthie_user_id,
-          "auth_success_redirect_url": "https://myapp.com/success",
-          "auth_failure_redirect_url": "https://myapp.com/failure"
+          "reference_id": record_identifier,
+          "auth_success_redirect_url": TERRA_SUCCESS_URL,
+          "auth_failure_redirect_url": TERRA_FAILURE_URL
         }
 
     response = requests.post(
@@ -39,26 +57,11 @@ def connect_to_terra(healthie_user_id: int):
     )
     response.raise_for_status()
 
-    # {
-    #   'expires_in': 86400,
-    #   'session_id': '7e38fa52-8872-4c68-83bb-575b2e2c8859',
-    #   'status': 'success',
-    #   'url': 'https://widget.tryterra.co/session/7e38fa52-8872-4c68-83bb-575b2e2c8859'
-    #  }
-
     return response.json()
 
 def send_terra_url_to_user(client_id, provider_id, terra_url):
 
-    H = Healthie(API_KEY)
-
-    variables = {
-        "id": str(client_id)
-    }
-    
-    response = H.get_doc_share_id(variables)
-    doc_share_id = response['user']['doc_share_id']
-    user_name = response['user']['name']
+    doc_share_id, record_identifier, user_name = get_ids(client_id)
 
     variables = {
         'simple_added_users': doc_share_id,
@@ -67,6 +70,7 @@ def send_terra_url_to_user(client_id, provider_id, terra_url):
         'initial_message': f"Hello, {user_name}, connect your mobile device by going to this URL: {terra_url}"
     }
 
+    H = Healthie(API_KEY)
     response = H.create_conversation(variables)
     print(response)
 
@@ -81,7 +85,7 @@ def main():
         terra_widget_url = details["url"]
         print(terra_widget_url)
 
-    send_terra_url_to_user(CHAZ_AS_PATIENT, CHAZ_AS_PROVIDER, terra_widget_url)\
+    send_terra_url_to_user(CHAZ_AS_PATIENT, CHAZ_AS_PROVIDER, terra_widget_url)
 
 if __name__ == "__main__":
     main()
