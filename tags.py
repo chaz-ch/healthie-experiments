@@ -8,7 +8,7 @@ from modules.util import convert_date_format, standardize_gender, is_valid_email
 from names_generator import generate_name
 
 # --- Configuration ---
-# Your GraphQL API endpoint URL
+# Your Healthie API Key
 API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
 
 
