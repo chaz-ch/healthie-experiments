@@ -9,7 +9,7 @@ import uuid
 
 
 # --- Configuration ---
-# Your GraphQL API endpoint URL
+# Your Healthie API Key
 API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
 
 # Path to your CSV file

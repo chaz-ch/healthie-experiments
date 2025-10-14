@@ -210,7 +210,11 @@ def main():
                 response = H.create_referral(variables)
                 print(response)
                 # {"data": {"createReferral": {"messages": null,"referral": {"id": "57421"}}}}
-                
+                try:
+                    referral_id = response['createReferral']['referral']['id']
+                except Exception as e:
+                    print(f"{e}")
+                    exit()                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
                 # send welcome email
                 variables = {
                     "id": new_user_id,
