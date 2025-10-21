@@ -1,10 +1,6 @@
 from modules.healthie import Healthie
 
 
-# --- Configuration ---
-# Your Healthie API Key
-API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
-
 # Path to your PDF file
 PDF_FILE_PATH = "test_document.pdf"
 # CSV_FILE_PATH = "cz_mammo_plus.csv"
@@ -23,7 +19,7 @@ CLIENTS_WITH_PROVIDER = {
 
 def main():
 
-    H = Healthie(API_KEY)
+    H = Healthie("STAGE")
 
     try:
         variables = {
