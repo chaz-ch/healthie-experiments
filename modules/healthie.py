@@ -2,10 +2,10 @@ import requests
 import json
 from pathlib import Path
 from typing import Optional, Dict, Any, List
+import os
+from dotenv import load_dotenv
 
-# --- Module-Level Constant ---
-# NOTE: Replace this with the actual URL of your secure GraphQL API
-TARGET_GRAPHQL_URL = "https://staging-api.gethealthie.com/graphql"
+load_dotenv()
 
 class Healthie:
     """
@@ -13,15 +13,25 @@ class Healthie:
     to Healthie.
     """
 
-    def __init__(self, api_key: str):
+    def __init__(self, environment: str):
         """
         Initializes the secure GraphQL client with authentication.
         """
-        if not api_key:
-            raise ValueError("API Key must be provided.")
-            
-        self.endpoint = TARGET_GRAPHQL_URL
-        self.api_key = api_key
+        if not environment:
+            environment = 'STAGE'
+        else:
+            environment = environment.upper()
+        
+        THE_URL = os.getenv(f'HEALTHIE_{environment}_URL')
+        THE_API_KEY = os.getenv(f'HEALTHIE_{environment}_API_KEY')
+        
+        if not THE_URL:
+            raise ValueError(f"No HEALTHIE_{environment}_URL in the environment.")
+        if not THE_API_KEY:
+            raise ValueError(f"No HEALTHIE_{environment}_API_KEY in the environment.")
+        
+        self.endpoint = os.getenv(f'HEALTHIE_{environment}_URL')
+        self.api_key =  os.getenv(f'HEALTHIE_{environment}_API_KEY')
 
         self.headers = {
             "Authorization": f"Basic {self.api_key}",
@@ -54,12 +64,12 @@ class Healthie:
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(f"API Request Error: {e}")
 
-    def _execute_upload_request(self, data: Dict[str, Any], files: Dict[str, Any],timeout: int = 10) -> Dict[str, Any]:
+    def _execute_upload_request(self, input_data: Dict[str, Any], files: Dict[str, Any],timeout: int = 10) -> Dict[str, Any]:
 
         try:
             response = requests.post(
-                self.endpoint, 
-                data = data,
+                str(self.endpoint), 
+                data = input_data,
                 files = files,
                 headers = self.headers,
                 timeout=timeout
@@ -143,9 +153,10 @@ class Healthie:
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
     def update_user(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -223,9 +234,11 @@ class Healthie:
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+        
 
     def list_users(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -236,26 +249,26 @@ class Healthie:
         
         mutation = """
 query users(
-  $offset: Int
-  $keywords: String
-  $sort_by: String
-  $active_status: String
-  $group_id: String
-  $show_all_by_default: Boolean
-  $should_paginate: Boolean
-  $provider_id: String
-  $conversation_id: ID
-  $limited_to_provider: Boolean
+    $offset: Int
+    $keywords: String
+    $sort_by: String
+    $active_status: String
+    $group_id: String
+    $show_all_by_default: Boolean
+    $should_paginate: Boolean
+    $provider_id: String
+    $conversation_id: ID
+    $limited_to_provider: Boolean
 ) {
-  usersCount(
+    usersCount(
     keywords: $keywords
     active_status: $active_status
     group_id: $group_id
     conversation_id: $conversation_id
     provider_id: $provider_id
     limited_to_provider: $limited_to_provider
-  )
-  users(
+    )
+    users(
     offset: $offset
     keywords: $keywords
     sort_by: $sort_by
@@ -266,16 +279,19 @@ query users(
     should_paginate: $should_paginate
     provider_id: $provider_id
     limited_to_provider: $limited_to_provider
-  ) {
+    ) {
     id
-  }
-}        """
+    }
+}
+        """
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+
 
     def get_signup_url(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -298,11 +314,13 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
-    def get_doc_share_id(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+
+    def get_ids(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Executes a GraphQL mutation to modify a new resource.
 
@@ -315,16 +333,49 @@ query users(
             id
             name
             doc_share_id
+            record_identifier
             }
         }
         """
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
+
+
+    def find_users_by_keywords(self, keywords) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param keywords: The comma-separated string of keywords to search for.
+        """
+        
+        input_data = {
+            'keywords': keywords
+        }
+        
+        mutation = """
+        query users($keywords: String) {
+            users(keywords: $keywords) {
+                id
+            }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
+        except Exception as e:
+            print(e)
+            return {}
+
+
+    def get_user_by_email(self, email: str) -> Dict[str, Any]:
+        return self.find_users_by_keywords(email)
 
 # tag-related
 
@@ -342,35 +393,37 @@ query users(
             }
 
             messages {
-              field
-              message
+                field
+                message
             }
-          }
+            }
         }
         """
 
         
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+
 
     def assign_tag(self, tag_ids: list[str], user_id: str) -> Dict[str, Any]:
         
         mutation = """
         mutation applyTags($ids: [ID], $taggable_user_id: ID) {
-          bulkApply(input: { ids: $ids, taggable_user_id: $taggable_user_id }) {
+            bulkApply(input: { ids: $ids, taggable_user_id: $taggable_user_id }) {
             tags {
-              id
-              name
+                id
+                name
             }
 
             messages {
-              field
-              message
+                field
+                message
             }
-          }
+            }
         }
         """
         inputs = {
@@ -380,25 +433,27 @@ query users(
         
         try:
             response = self._execute_request(mutation, inputs)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+
 
     def remove_tag(self, tag_id: str, user_id: str) -> Dict[str, Any]:
         
         mutation = """
         mutation removeAppliedTag($id: ID, $taggable_user_id: ID) {
-          removeAppliedTag(input: { id: $id, taggable_user_id: $taggable_user_id }) {
+            removeAppliedTag(input: { id: $id, taggable_user_id: $taggable_user_id }) {
             tag {
-              id
-              name
+                id
+                name
             }
 
             messages {
-              field
-              message
+                field
+                message
             }
-          }
+            }
         }
         """
         inputs = {
@@ -408,77 +463,65 @@ query users(
         
         try:
             response = self._execute_request(mutation, inputs)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+
 
     def list_tags(self) -> Dict[str, Any]:
         
         query = """
         query tags {
-          tags {
+            tags {
             id
             name
-          }
+            }
         }
         """
         try:
             response = self._execute_request(query)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
     def list_tags_with_users(self) -> Dict[str, Any]:
         
         query = """
         query tags {
-          tags {
+            tags {
             id
             name
             tagged_users {
-              name
-              id
+                name
+                id
             }
-          }
+            }
         }
         """
         try:
             response = self._execute_request(query)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
-
-    def list_tags(self) -> Dict[str, Any]:
-        
-        query = """
-        query tags {
-          tags {
-            id
-            name
-          }
-        }
-        """
-        try:
-            response = self._execute_request(query)
-        except Exception as e:
-            print(e)
-        return response.get('data', {})
+            return {}
 
     def delete_tag(self, tag_id: str) -> Dict[str, Any]:
         
         mutation = """
         mutation deleteTag($id: ID) {
-          deleteTag(input: { id: $id }) {
+            deleteTag(input: { id: $id }) {
             tag {
-              id
-              name
+                id
+                name
             }
 
             messages {
-              field
-              message
+                field
+                message
             }
-          }
+            }
         }
         """
         inputs = {
@@ -487,9 +530,10 @@ query users(
         
         try:
             response = self._execute_request(mutation, inputs)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
 # document-related
 
@@ -523,22 +567,22 @@ query users(
             $provider_ids: [String],
 
             ) {
-          createDocument(input: { 
+            createDocument(input: { 
             file: $file,
             rel_user_id: $rel_user_id,
             share_with_rel: $share_with_rel,
             display_name: $display_name,
             clients_ids: $clients_ids,
             provider_ids: $provider_ids,
-          }) {
+            }) {
             document {
-              id
+                id
             }
             messages {
-              field
-              message
+                field
+                message
             }
-          }
+            }
         }
         """
 
@@ -665,8 +709,7 @@ query users(
             return response.get('data', {})
         except Exception as e:
             print(e)
-
-        return None
+            return {}
 
     def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
 
@@ -704,11 +747,11 @@ query users(
         mutation createNote($input: createNoteInput) {
             createNote(input: $input) {
                 messages {
-                  field
-                  message
+                    field
+                    message
                 }
                 note {
-                  id
+                    id
                 }
             }
         }
@@ -716,10 +759,12 @@ query users(
 
         try:
             response = self._execute_request(mutation, createNoteInput)
+            return response.get('data', {})
         except Exception as e:
             print(e)
+            return {}
 
-        return response.get('data', {})
+
 
     # task-related
 
@@ -786,9 +831,10 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
 # Referral-related
 
@@ -814,9 +860,10 @@ mutation createReferringPhysician($input: createReferringPhysicianInput) {
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
 
     def create_referral(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         mutation = """
@@ -835,6 +882,76 @@ mutation createReferral($input: createReferralInput) {
 
         try:
             response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
         except Exception as e:
             print(e)
-        return response.get('data', {})
+            return {}
+
+# Forms
+
+    def create_filled_form(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to CREATE a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+        
+        mutation = """
+        mutation createFormAnswerGroup(
+            # Should almost always true
+            $finished: Boolean
+            # ID of the custom_module_form (e.g "100")
+            $custom_module_form_id: String
+            # ID of the patient (e.g "61")
+            $user_id: String
+            # e.g [{custom_module_id: "1", answer: "foo", user_id: "61"}, {custom_module_id: "2", answer: "bar", user_id: "61"}]
+            $form_answers: [FormAnswerInput!]!
+        ) {
+        createFormAnswerGroup(
+            input: {
+            finished: $finished
+            custom_module_form_id: $custom_module_form_id
+            user_id: $user_id
+            form_answers: $form_answers
+            }
+        ) {
+            form_answer_group {
+            id
+            }
+            messages {
+            field
+            message
+            }
+        }
+        }
+        """
+
+
+
+# created_at · String! · required · The date on which the template was created
+# cursor · Cursor! · required · Pagination cursor
+# custom_modules · [CustomModule!]! · required · The questions in the template
+# external_id · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
+# external_id_type · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
+# form_answer_groups · [FormAnswerGroup!]! · required · All filled out forms for this template
+# has_matrix_field · Boolean · The form has matrix field
+# has_non_readonly_modules · Boolean · When true, the form has modules that the user has to fill out
+# id · ID! · required · The unique identifier of the module form
+# is_video · Boolean · Whether the form contains only one custom_module with mod_type 'video' and was created as part of a program
+# last_updated_by_user · User · User who last updated this form
+# metadata · String · A serialized JSON string of metadata. Maximum character limit of 10,000.
+# name · String · The given name of the template
+# prefill · Boolean · Whether subsequent times filling out the template, will start with the template prefilled with the previous answers
+# updated_at · String! · required · The date on which the template was updated
+# uploaded_by_healthie_team · Boolean! · required · Whether or not this form was uploaded by Healthie team member
+# use_for_charting · Boolean! · required · Whether the template can be used to chart with
+# use_for_program · Boolean! · required · Whether the template was made for a program
+# user · User · The owner of the template
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
+        except Exception as e:
+            print(e)
+            return {}
+

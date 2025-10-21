@@ -23,7 +23,7 @@ def main():
     """
     Main function to read the CSV file and process each row.
     """
-    H = Healthie(API_KEY)
+    H = Healthie("STAGE")
 
     try:
 
@@ -40,8 +40,6 @@ def main():
             'owner_id': CHAZ_AS_PROVIDER,
             'initial_message': f"Hello, {CHAZ_AS_PATIENT}, I am your navigator, {CHAZ_AS_PROVIDER}"
         }
-
-# {'user': {'id': '4097532', 'doc_share_id': 'user-4097532'}}
 
         response = H.create_conversation(variables)
         print(response)

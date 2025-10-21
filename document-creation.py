@@ -20,7 +20,7 @@ CLIENTS_WITH_PROVIDER = {
 
 def main():
 
-    H = Healthie(API_KEY)
+    H = Healthie("STAGE")
     
     for client in CLIENTS_WITH_PROVIDER:
         try:

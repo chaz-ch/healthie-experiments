@@ -1,10 +1,9 @@
-import glob, os, re, signal, sys, time, random
-from datetime import datetime, timedelta
-from requests.exceptions import HTTPError
+import random
+import base64
+from datetime import datetime
 from email_validator import validate_email, EmailNotValidError
 import phonenumbers
 from phonenumbers import NumberParseException
-import base64
 
 
 def validate_phone_number(number_str, country_code=None):
@@ -172,3 +171,56 @@ def generate_npi():
 
     # 4. Append the check digit to form the final 10-digit NPI.
     return nine_digits + str(check_digit)
+
+def random_BreastDensity():
+
+    random_ID = None
+    BDs = {
+        'Result::BreastDensity::Dense': '32349', 
+        'Result::BreastDensity::NonDense': '32350'
+    }
+    
+    BD = random.choice(list(BDs.keys()))
+    random_ID = BDs[BD]
+    
+    return random_ID
+
+def random_TCLifetimeRisk():
+
+    random_ID = None
+    TCLifetimeRisks = {
+        'Result::TCLifetimeRisk::Average':      '32351',
+        'Result::TCLifetimeRisk::High':         '32352',
+        'Result::TCLifetimeRisk::Intermediate': '32353'
+    }
+    
+    TCLifetimeRisk = random.choice(list(TCLifetimeRisks.keys()))
+    random_ID = TCLifetimeRisks[TCLifetimeRisk]
+    
+    return random_ID
+                
+def random_BIRADS():
+
+    random_ID = None
+    BIRADS = {
+        'Result::BIRADS::0': '32343', 
+        'Result::BIRADS::1': '32344',
+        'Result::BIRADS::2': '32345',
+        'Result::BIRADS::3': '32346',
+        'Result::BIRADS::4': '32347',
+        'Result::BIRADS::5': '32348'
+    }
+    BIRAD = random.choice(list(BIRADS.keys()))
+    random_ID = BIRADS[BIRAD]
+    return random_ID
+
+def random_BAC():
+    random_ID = None
+    BACs = {
+        'Result::BAC::Absent': '32341', 
+        'Result::BAC::Present': '32342'
+    }
+    BAC = random.choice(list(BACs.keys()))
+    random_ID = BACs[BAC]
+    return random_ID
+

@@ -2,3 +2,5 @@ requests
 email_validator
 phonenumbers
 names-generator
+vital
+python-dotenv
