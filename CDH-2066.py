@@ -5,8 +5,8 @@ from modules.healthie import Healthie
 from modules.util import convert_date_format, standardize_gender, is_valid_email, validate_phone_number, generate_npi
 from names_generator import generate_name
 
-# --- Configuration ---
-API_KEY = "gh_sbox_vRYSSCYeu4n1G05EAXyc0KxWumBGYTQcXKCeaT34dmWKJWrFvWjq11Hn2sxnyy7a"
+PROD_SMI_GROUP = 70105
+STAGE_SMI_GROUP = 93581
 
 # Path to your CSV file
 CSV_FILE_PATH = "CDH-2066.csv"
@@ -92,6 +92,7 @@ def main():
                     "record_identifier": random_uuid,  # would be userid from CSV
                     "dob": convert_date_format(row.get("dateofbirth")),
                     "gender": standardize_gender(row.get("gender")),
+                    "user_group_id": str(STAGE_SMI_GROUP)
                 }
 
                 # Must have - Phase 1: 
