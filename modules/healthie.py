@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 class Healthie:
     """
     A client class for managing authenticated connections and operations
@@ -18,45 +19,46 @@ class Healthie:
         Initializes the secure GraphQL client with authentication.
         """
         if not environment:
-            environment = 'STAGE'
+            environment = "STAGE"
         else:
             environment = environment.upper()
 
-        THE_URL = os.getenv(f'HEALTHIE_{environment}_URL')
-        THE_API_KEY = os.getenv(f'HEALTHIE_{environment}_API_KEY')
+        THE_URL = os.getenv(f"HEALTHIE_{environment}_URL")
+        THE_API_KEY = os.getenv(f"HEALTHIE_{environment}_API_KEY")
 
         if not THE_URL:
             raise ValueError(f"No HEALTHIE_{environment}_URL in the environment.")
         if not THE_API_KEY:
             raise ValueError(f"No HEALTHIE_{environment}_API_KEY in the environment.")
 
-        self.endpoint = str(os.getenv(f'HEALTHIE_{environment}_URL'))
-        self.api_key =  os.getenv(f'HEALTHIE_{environment}_API_KEY')
+        self.endpoint = str(os.getenv(f"HEALTHIE_{environment}_URL"))
+        self.api_key = os.getenv(f"HEALTHIE_{environment}_API_KEY")
 
         self.headers = {
             "Authorization": f"Basic {self.api_key}",
-            "AuthorizationSource": "API"
+            "AuthorizationSource": "API",
         }
 
-    def _execute_request(self, query: str, variables: Optional[Dict[str, Any]] = None,timeout: int = 10) -> Dict[str, Any]:
-
+    def _execute_request(
+        self, query: str, variables: Optional[Dict[str, Any]] = None, timeout: int = 10
+    ) -> Dict[str, Any]:
         payload: Dict[str, Any] = {"query": query}
         if variables is not None:
             payload["variables"] = variables
 
         try:
             response = requests.post(
-                self.endpoint,
-                json=payload,
-                headers=self.headers,
-                timeout=timeout
+                self.endpoint, json=payload, headers=self.headers, timeout=timeout
             )
             response.raise_for_status()
 
             data: Dict[str, Any] = response.json()
 
-            if 'errors' in data:
-                error_messages: List[str] = [err.get('message', 'Unknown GraphQL Error') for err in data['errors']]
+            if "errors" in data:
+                error_messages: List[str] = [
+                    err.get("message", "Unknown GraphQL Error")
+                    for err in data["errors"]
+                ]
                 raise ValueError(f"GraphQL Query Error(s): {'; '.join(error_messages)}")
 
             return data
@@ -64,23 +66,27 @@ class Healthie:
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(f"API Request Error: {e}")
 
-    def _execute_upload_request(self, input_data: Dict[str, Any], files: Dict[str, Any],timeout: int = 10) -> Dict[str, Any]:
-
+    def _execute_upload_request(
+        self, input_data: Dict[str, Any], files: Dict[str, Any], timeout: int = 10
+    ) -> Dict[str, Any]:
         try:
             response = requests.post(
                 str(self.endpoint),
-                data = input_data,
-                files = files,
-                headers = self.headers,
-                timeout=timeout
+                data=input_data,
+                files=files,
+                headers=self.headers,
+                timeout=timeout,
             )
 
             response.raise_for_status()
 
             data: Dict[str, Any] = response.json()
 
-            if 'errors' in data:
-                error_messages: List[str] = [err.get('message', 'Unknown GraphQL Error') for err in data['errors']]
+            if "errors" in data:
+                error_messages: List[str] = [
+                    err.get("message", "Unknown GraphQL Error")
+                    for err in data["errors"]
+                ]
                 raise ValueError(f"GraphQL Query Error(s): {'; '.join(error_messages)}")
 
             return data
@@ -88,7 +94,7 @@ class Healthie:
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(f"API Request Error: {e}")
 
-# user-related
+    # user-related
 
     def create_user(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -153,7 +159,7 @@ class Healthie:
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
@@ -234,7 +240,7 @@ class Healthie:
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
@@ -286,11 +292,10 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
-
 
     def get_signup_url(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -313,11 +318,10 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
-
 
     def get_ids(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -339,11 +343,10 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
-
 
     def find_users_by_keywords(self, keywords) -> Dict[str, Any]:
         """
@@ -352,9 +355,7 @@ query users(
         :param keywords: The comma-separated string of keywords to search for.
         """
 
-        input_data = {
-            'keywords': keywords
-        }
+        input_data = {"keywords": keywords}
 
         mutation = """
         query users($keywords: String) {
@@ -366,11 +367,10 @@ query users(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
-
 
     def get_user_by_email(self, email: str) -> Dict[str, Any]:
         return self.find_users_by_keywords(email)
@@ -404,15 +404,14 @@ query organizationMembers(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-# tag-related
+    # tag-related
 
     def create_tag(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-
         mutation = """
         mutation createTag($name: String, $taggable_user_id: ID) {
         createTag(input: { name: $name, taggable_user_id: $taggable_user_id }) {
@@ -432,17 +431,14 @@ query organizationMembers(
         }
         """
 
-
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-
     def assign_tag(self, tag_ids: list[str], user_id: str) -> Dict[str, Any]:
-
         mutation = """
         mutation applyTags($ids: [ID], $taggable_user_id: ID) {
             bulkApply(input: { ids: $ids, taggable_user_id: $taggable_user_id }) {
@@ -458,21 +454,16 @@ query organizationMembers(
             }
         }
         """
-        inputs = {
-            'ids': tag_ids,
-            'taggable_user_id': user_id
-        }
+        inputs = {"ids": tag_ids, "taggable_user_id": user_id}
 
         try:
             response = self._execute_request(mutation, inputs)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-
     def remove_tag(self, tag_id: str, user_id: str) -> Dict[str, Any]:
-
         mutation = """
         mutation removeAppliedTag($id: ID, $taggable_user_id: ID) {
             removeAppliedTag(input: { id: $id, taggable_user_id: $taggable_user_id }) {
@@ -488,21 +479,16 @@ query organizationMembers(
             }
         }
         """
-        inputs = {
-            'id': tag_id,
-            'taggable_user_id': user_id
-        }
+        inputs = {"id": tag_id, "taggable_user_id": user_id}
 
         try:
             response = self._execute_request(mutation, inputs)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-
     def list_tags(self) -> Dict[str, Any]:
-
         query = """
         query tags {
             tags {
@@ -513,13 +499,12 @@ query organizationMembers(
         """
         try:
             response = self._execute_request(query)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
     def list_tags_with_users(self) -> Dict[str, Any]:
-
         query = """
         query tags {
             tags {
@@ -534,13 +519,12 @@ query organizationMembers(
         """
         try:
             response = self._execute_request(query)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
     def delete_tag(self, tag_id: str) -> Dict[str, Any]:
-
         mutation = """
         mutation deleteTag($id: ID) {
             deleteTag(input: { id: $id }) {
@@ -556,38 +540,32 @@ query organizationMembers(
             }
         }
         """
-        inputs = {
-            'id': tag_id
-        }
+        inputs = {"id": tag_id}
 
         try:
             response = self._execute_request(mutation, inputs)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-# document-related
+    # document-related
 
     def create_document(self, variables: Dict[str, Any]) -> Dict[str, Any]:
+        if variables["display_name"] is None:
+            temp_file = Path(variables["file_path"])
+            variables["display_name"] = temp_file.stem
 
-        if variables['display_name'] is None:
-            temp_file = Path(variables['file_path'])
-            variables['display_name'] = temp_file.stem
-
-        file = open(variables['file_path'], 'rb')
+        file = open(variables["file_path"], "rb")
 
         inputs = {
-            'file:': None, # Upload
-
-            'rel_user_id': variables['rel_user_id'],
-            'share_with_rel': variables['share_with_rel'],
-            'display_name:': variables['display_name'],
-            'clients_ids:': variables['clients_ids'],
-            'provider_ids:': variables['provider_ids'],
-
+            "file:": None,  # Upload
+            "rel_user_id": variables["rel_user_id"],
+            "share_with_rel": variables["share_with_rel"],
+            "display_name:": variables["display_name"],
+            "clients_ids:": variables["clients_ids"],
+            "provider_ids:": variables["provider_ids"],
         }
-
 
         mutation = """
         mutation createDocument(
@@ -618,32 +596,19 @@ query organizationMembers(
         }
         """
 
-        operations = json.dumps({
-            "query": mutation,
-            "variables": inputs
-        })
+        operations = json.dumps({"query": mutation, "variables": inputs})
 
-        map = json.dumps({ "0": ["variables.file"] })
+        map = json.dumps({"0": ["variables.file"]})
 
-        data = {
-            "operations": operations,
-            "map": map
-        }
+        data = {"operations": operations, "map": map}
 
-        files = {
-            "0" : file
-        }
+        files = {"0": file}
 
-        response = self._execute_upload_request(
-            data,
-            files
-        )
+        response = self._execute_upload_request(data, files)
 
-        return response.get('data', {})
+        return response.get("data", {})
 
     def list_documents(self, variables: Dict[str, Any]) -> Dict[str, Any]:
-
-
         inputs = variables
 
         mutation = """
@@ -695,15 +660,13 @@ query organizationMembers(
         }
         """
 
-
         response = self._execute_request(mutation, inputs)
 
-        return response.get('data', {})
+        return response.get("data", {})
 
-# Conversation [chat] related
+    # Conversation [chat] related
 
     def create_conversation(self, variables: Dict[str, Any]) -> Dict[str, Any]:
-
         mutation = """
             mutation createConversation(
             $input: createConversationInput
@@ -725,33 +688,28 @@ query organizationMembers(
         """
 
         createConversationInput = {
-            "name": variables['conversation_name'],
-            "owner_id": variables['owner_id'],
-            "note": {
-                "content": variables['initial_message']
-            },
-            "simple_added_users": variables['simple_added_users']
+            "name": variables["conversation_name"],
+            "owner_id": variables["owner_id"],
+            "note": {"content": variables["initial_message"]},
+            "simple_added_users": variables["simple_added_users"],
         }
 
-        inputs = {
-            "input": createConversationInput
-        }
+        inputs = {"input": createConversationInput}
         try:
             response = self._execute_request(mutation, inputs)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
     def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
-
         createNoteInput = {
             "input": {
-                "content": variables['content'],
-                "conversation_id": variables['conversation_id'],
-                "user_id": variables['conversation_id'],
-                "org_chat": variables['org_chat'],
-                "hide_org_chat_confirmation": variables['hide_org_chat_confirmation']
+                "content": variables["content"],
+                "conversation_id": variables["conversation_id"],
+                "user_id": variables["conversation_id"],
+                "org_chat": variables["org_chat"],
+                "hide_org_chat_confirmation": variables["hide_org_chat_confirmation"],
             }
         }
 
@@ -791,12 +749,10 @@ query organizationMembers(
 
         try:
             response = self._execute_request(mutation, createNoteInput)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
-
-
 
     # task-related
 
@@ -806,24 +762,24 @@ query organizationMembers(
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-            # assignee_ids · [ID!] · IDs of the users assigned to this task
-            # client_id · String · The identifier of the client (patient) associated with this task
-            # complete · Boolean Optional. Set to true if the Task is already complete
-            # completed_by_id · ID
-            # $content: String 	Content of the Task
-            # created_by_id · String · The ID of the user (provider or staff member) who is listed as creating the task
-            # $due_date: String Optional. A due date of the Task
-            # note_id · ID
-            # $priority: Int 0 or 1
-            # $reminder: TaskReminderInput
-            #   reminder.is_enabled	Set to true to enable the reminder, false otherwise
-            #   reminder.reminder_time	Time, expressed in number of minutes from midnight, to trigger the reminder at
-            #   reminder.interval_type	Frequency of the reminder. Possible options are:
-            #     daily
-            #     weekly
-            #     once - default
-            #   reminder.interval_value	Date when to trigger the reminder
-            # seen · Boolean
+        # assignee_ids · [ID!] · IDs of the users assigned to this task
+        # client_id · String · The identifier of the client (patient) associated with this task
+        # complete · Boolean Optional. Set to true if the Task is already complete
+        # completed_by_id · ID
+        # $content: String 	Content of the Task
+        # created_by_id · String · The ID of the user (provider or staff member) who is listed as creating the task
+        # $due_date: String Optional. A due date of the Task
+        # note_id · ID
+        # $priority: Int 0 or 1
+        # $reminder: TaskReminderInput
+        #   reminder.is_enabled	Set to true to enable the reminder, false otherwise
+        #   reminder.reminder_time	Time, expressed in number of minutes from midnight, to trigger the reminder at
+        #   reminder.interval_type	Frequency of the reminder. Possible options are:
+        #     daily
+        #     weekly
+        #     once - default
+        #   reminder.interval_value	Date when to trigger the reminder
+        # seen · Boolean
 
         mutation = """
         mutation createTask(
@@ -863,12 +819,12 @@ query organizationMembers(
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-# Referral-related
+    # Referral-related
 
     def create_referring_physician(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         mutation = """
@@ -892,7 +848,7 @@ mutation createReferringPhysician($input: createReferringPhysicianInput) {
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
@@ -914,12 +870,12 @@ mutation createReferral($input: createReferralInput) {
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-# Forms
+    # Forms
 
     def create_filled_form(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -958,39 +914,36 @@ mutation createReferral($input: createReferralInput) {
         }
         """
 
-
-
-# created_at · String! · required · The date on which the template was created
-# cursor · Cursor! · required · Pagination cursor
-# custom_modules · [CustomModule!]! · required · The questions in the template
-# external_id · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
-# external_id_type · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
-# form_answer_groups · [FormAnswerGroup!]! · required · All filled out forms for this template
-# has_matrix_field · Boolean · The form has matrix field
-# has_non_readonly_modules · Boolean · When true, the form has modules that the user has to fill out
-# id · ID! · required · The unique identifier of the module form
-# is_video · Boolean · Whether the form contains only one custom_module with mod_type 'video' and was created as part of a program
-# last_updated_by_user · User · User who last updated this form
-# metadata · String · A serialized JSON string of metadata. Maximum character limit of 10,000.
-# name · String · The given name of the template
-# prefill · Boolean · Whether subsequent times filling out the template, will start with the template prefilled with the previous answers
-# updated_at · String! · required · The date on which the template was updated
-# uploaded_by_healthie_team · Boolean! · required · Whether or not this form was uploaded by Healthie team member
-# use_for_charting · Boolean! · required · Whether the template can be used to chart with
-# use_for_program · Boolean! · required · Whether the template was made for a program
-# user · User · The owner of the template
+        # created_at · String! · required · The date on which the template was created
+        # cursor · Cursor! · required · Pagination cursor
+        # custom_modules · [CustomModule!]! · required · The questions in the template
+        # external_id · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
+        # external_id_type · String · Custom column used by API users. Used to relate our form objects with objects in third-party systems
+        # form_answer_groups · [FormAnswerGroup!]! · required · All filled out forms for this template
+        # has_matrix_field · Boolean · The form has matrix field
+        # has_non_readonly_modules · Boolean · When true, the form has modules that the user has to fill out
+        # id · ID! · required · The unique identifier of the module form
+        # is_video · Boolean · Whether the form contains only one custom_module with mod_type 'video' and was created as part of a program
+        # last_updated_by_user · User · User who last updated this form
+        # metadata · String · A serialized JSON string of metadata. Maximum character limit of 10,000.
+        # name · String · The given name of the template
+        # prefill · Boolean · Whether subsequent times filling out the template, will start with the template prefilled with the previous answers
+        # updated_at · String! · required · The date on which the template was updated
+        # uploaded_by_healthie_team · Boolean! · required · Whether or not this form was uploaded by Healthie team member
+        # use_for_charting · Boolean! · required · Whether the template can be used to chart with
+        # use_for_program · Boolean! · required · Whether the template was made for a program
+        # user · User · The owner of the template
 
         try:
             response = self._execute_request(mutation, input_data)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
-# Groups
+    # Groups
 
     def list_groups(self) -> Dict[str, Any]:
-
         query = """
 query userGroups($offset: Int, $keywords: String, $sort_by: String) {
   userGroupsCount(keywords: $keywords)
@@ -1003,13 +956,12 @@ query userGroups($offset: Int, $keywords: String, $sort_by: String) {
         """
         try:
             response = self._execute_request(query)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
 
     def list_groups_with_users(self) -> Dict[str, Any]:
-
         query = """
 query userGroups($offset: Int, $keywords: String, $sort_by: String) {
   userGroupsCount(keywords: $keywords)
@@ -1026,7 +978,7 @@ query userGroups($offset: Int, $keywords: String, $sort_by: String) {
         """
         try:
             response = self._execute_request(query)
-            return response.get('data', {})
+            return response.get("data", {})
         except Exception as e:
             print(e)
             return {}
