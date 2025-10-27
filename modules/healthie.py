@@ -9,7 +9,7 @@ load_dotenv()
 
 class Healthie:
     """
-    A client class for managing authenticated connections and operations 
+    A client class for managing authenticated connections and operations
     to Healthie.
     """
 
@@ -21,16 +21,16 @@ class Healthie:
             environment = 'STAGE'
         else:
             environment = environment.upper()
-        
+
         THE_URL = os.getenv(f'HEALTHIE_{environment}_URL')
         THE_API_KEY = os.getenv(f'HEALTHIE_{environment}_API_KEY')
-        
+
         if not THE_URL:
             raise ValueError(f"No HEALTHIE_{environment}_URL in the environment.")
         if not THE_API_KEY:
             raise ValueError(f"No HEALTHIE_{environment}_API_KEY in the environment.")
-        
-        self.endpoint = os.getenv(f'HEALTHIE_{environment}_URL')
+
+        self.endpoint = str(os.getenv(f'HEALTHIE_{environment}_URL'))
         self.api_key =  os.getenv(f'HEALTHIE_{environment}_API_KEY')
 
         self.headers = {
@@ -39,11 +39,11 @@ class Healthie:
         }
 
     def _execute_request(self, query: str, variables: Optional[Dict[str, Any]] = None,timeout: int = 10) -> Dict[str, Any]:
-        
+
         payload: Dict[str, Any] = {"query": query}
         if variables is not None:
             payload["variables"] = variables
-            
+
         try:
             response = requests.post(
                 self.endpoint,
@@ -51,10 +51,10 @@ class Healthie:
                 headers=self.headers,
                 timeout=timeout
             )
-            response.raise_for_status() 
-            
+            response.raise_for_status()
+
             data: Dict[str, Any] = response.json()
-            
+
             if 'errors' in data:
                 error_messages: List[str] = [err.get('message', 'Unknown GraphQL Error') for err in data['errors']]
                 raise ValueError(f"GraphQL Query Error(s): {'; '.join(error_messages)}")
@@ -68,17 +68,17 @@ class Healthie:
 
         try:
             response = requests.post(
-                str(self.endpoint), 
+                str(self.endpoint),
                 data = input_data,
                 files = files,
                 headers = self.headers,
                 timeout=timeout
             )
 
-            response.raise_for_status() 
-            
+            response.raise_for_status()
+
             data: Dict[str, Any] = response.json()
-            
+
             if 'errors' in data:
                 error_messages: List[str] = [err.get('message', 'Unknown GraphQL Error') for err in data['errors']]
                 raise ValueError(f"GraphQL Query Error(s): {'; '.join(error_messages)}")
@@ -96,7 +96,7 @@ class Healthie:
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
     mutation createClient(
     $first_name: String!
@@ -164,13 +164,13 @@ class Healthie:
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
         mutation updateClient(
-            $id: ID!, 
-            $first_name: String, 
-            $last_name: String, 
-            $legal_name: String, 
+            $id: ID!,
+            $first_name: String,
+            $last_name: String,
+            $legal_name: String,
             $email: String,
             $active: Boolean,
             $additional_phone_number: String,
@@ -186,11 +186,11 @@ class Healthie:
             $timezone: String,
             $user_group_id: String) {
         updateClient(
-            input: { 
-                id: $id, 
-                first_name: $first_name, 
-                last_name: $last_name, 
-                legal_name: $legal_name, 
+            input: {
+                id: $id,
+                first_name: $first_name,
+                last_name: $last_name,
+                legal_name: $legal_name,
                 email: $email
                 active: $active,
                 additional_phone_number: $additional_phone_number,
@@ -212,7 +212,7 @@ class Healthie:
                 first_name
                 last_name
                 legal_name
-                email, 
+                email,
                 active,
                 additional_phone_number,
                 additional_record_identifier,
@@ -238,7 +238,6 @@ class Healthie:
         except Exception as e:
             print(e)
             return {}
-        
 
     def list_users(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -246,7 +245,7 @@ class Healthie:
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
 query users(
     $offset: Int
@@ -299,7 +298,7 @@ query users(
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
         query getUser($id: ID) {
         user(id: $id) {
@@ -326,7 +325,7 @@ query users(
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
         query getUser($id: ID) {
         user(id: $id) {
@@ -346,18 +345,17 @@ query users(
             return {}
 
 
-
     def find_users_by_keywords(self, keywords) -> Dict[str, Any]:
         """
         Executes a GraphQL mutation to modify a new resource.
 
         :param keywords: The comma-separated string of keywords to search for.
         """
-        
+
         input_data = {
             'keywords': keywords
         }
-        
+
         mutation = """
         query users($keywords: String) {
             users(keywords: $keywords) {
@@ -377,10 +375,44 @@ query users(
     def get_user_by_email(self, email: str) -> Dict[str, Any]:
         return self.find_users_by_keywords(email)
 
+    def get_org_users(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param keywords: The comma-separated string of keywords to search for.
+        """
+
+        mutation = """
+query organizationMembers(
+  $keywords: String
+  $offset: Int
+  $page_size: Int
+) {
+  organizationMembers(
+    keywords: $keywords
+    offset: $offset
+    page_size: $page_size
+  ) {
+    id
+    full_name
+    email
+    active
+    is_active_provider
+  }
+}
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get('data', {})
+        except Exception as e:
+            print(e)
+            return {}
+
 # tag-related
 
     def create_tag(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
-        
+
         mutation = """
         mutation createTag($name: String, $taggable_user_id: ID) {
         createTag(input: { name: $name, taggable_user_id: $taggable_user_id }) {
@@ -400,7 +432,7 @@ query users(
         }
         """
 
-        
+
         try:
             response = self._execute_request(mutation, input_data)
             return response.get('data', {})
@@ -410,7 +442,7 @@ query users(
 
 
     def assign_tag(self, tag_ids: list[str], user_id: str) -> Dict[str, Any]:
-        
+
         mutation = """
         mutation applyTags($ids: [ID], $taggable_user_id: ID) {
             bulkApply(input: { ids: $ids, taggable_user_id: $taggable_user_id }) {
@@ -427,10 +459,10 @@ query users(
         }
         """
         inputs = {
-            'ids': tag_ids, 
+            'ids': tag_ids,
             'taggable_user_id': user_id
         }
-        
+
         try:
             response = self._execute_request(mutation, inputs)
             return response.get('data', {})
@@ -440,7 +472,7 @@ query users(
 
 
     def remove_tag(self, tag_id: str, user_id: str) -> Dict[str, Any]:
-        
+
         mutation = """
         mutation removeAppliedTag($id: ID, $taggable_user_id: ID) {
             removeAppliedTag(input: { id: $id, taggable_user_id: $taggable_user_id }) {
@@ -457,10 +489,10 @@ query users(
         }
         """
         inputs = {
-            'id': tag_id, 
+            'id': tag_id,
             'taggable_user_id': user_id
         }
-        
+
         try:
             response = self._execute_request(mutation, inputs)
             return response.get('data', {})
@@ -470,7 +502,7 @@ query users(
 
 
     def list_tags(self) -> Dict[str, Any]:
-        
+
         query = """
         query tags {
             tags {
@@ -487,7 +519,7 @@ query users(
             return {}
 
     def list_tags_with_users(self) -> Dict[str, Any]:
-        
+
         query = """
         query tags {
             tags {
@@ -508,7 +540,7 @@ query users(
             return {}
 
     def delete_tag(self, tag_id: str) -> Dict[str, Any]:
-        
+
         mutation = """
         mutation deleteTag($id: ID) {
             deleteTag(input: { id: $id }) {
@@ -527,7 +559,7 @@ query users(
         inputs = {
             'id': tag_id
         }
-        
+
         try:
             response = self._execute_request(mutation, inputs)
             return response.get('data', {})
@@ -542,32 +574,32 @@ query users(
         if variables['display_name'] is None:
             temp_file = Path(variables['file_path'])
             variables['display_name'] = temp_file.stem
-        
+
         file = open(variables['file_path'], 'rb')
 
         inputs = {
             'file:': None, # Upload
 
-            'rel_user_id': variables['rel_user_id'], 
-            'share_with_rel': variables['share_with_rel'], 
-            'display_name:': variables['display_name'], 
+            'rel_user_id': variables['rel_user_id'],
+            'share_with_rel': variables['share_with_rel'],
+            'display_name:': variables['display_name'],
             'clients_ids:': variables['clients_ids'],
             'provider_ids:': variables['provider_ids'],
-            
+
         }
-        
+
 
         mutation = """
         mutation createDocument(
             $file: Upload,
             $rel_user_id: String,
             $share_with_rel: Boolean,
-            $display_name: String, 
+            $display_name: String,
             $clients_ids: String,
             $provider_ids: [String],
 
             ) {
-            createDocument(input: { 
+            createDocument(input: {
             file: $file,
             rel_user_id: $rel_user_id,
             share_with_rel: $share_with_rel,
@@ -590,18 +622,18 @@ query users(
             "query": mutation,
             "variables": inputs
         })
-        
+
         map = json.dumps({ "0": ["variables.file"] })
 
         data = {
             "operations": operations,
             "map": map
         }
-        
+
         files = {
             "0" : file
         }
-        
+
         response = self._execute_upload_request(
             data,
             files
@@ -792,7 +824,7 @@ query users(
             #     once - default
             #   reminder.interval_value	Date when to trigger the reminder
             # seen · Boolean
-        
+
         mutation = """
         mutation createTask(
             $assignee_ids: [ID!]
@@ -895,7 +927,7 @@ mutation createReferral($input: createReferralInput) {
 
         :param input_data: The dictionary of data to pass as the input variable.
         """
-        
+
         mutation = """
         mutation createFormAnswerGroup(
             # Should almost always true
@@ -955,3 +987,46 @@ mutation createReferral($input: createReferralInput) {
             print(e)
             return {}
 
+# Groups
+
+    def list_groups(self) -> Dict[str, Any]:
+
+        query = """
+query userGroups($offset: Int, $keywords: String, $sort_by: String) {
+  userGroupsCount(keywords: $keywords)
+  userGroups(offset: $offset, keywords: $keywords, sort_by: $sort_by, should_paginate: true) {
+    id
+    name
+    users_count
+  }
+}
+        """
+        try:
+            response = self._execute_request(query)
+            return response.get('data', {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def list_groups_with_users(self) -> Dict[str, Any]:
+
+        query = """
+query userGroups($offset: Int, $keywords: String, $sort_by: String) {
+  userGroupsCount(keywords: $keywords)
+  userGroups(offset: $offset, keywords: $keywords, sort_by: $sort_by, should_paginate: true) {
+    id
+    name
+    users_count
+    users{
+      id
+      name
+    }
+  }
+}
+        """
+        try:
+            response = self._execute_request(query)
+            return response.get('data', {})
+        except Exception as e:
+            print(e)
+            return {}
