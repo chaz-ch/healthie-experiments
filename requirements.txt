@@ -1,6 +1,7 @@
-requests
 email_validator
-phonenumbers
 names-generator
-vital
+phonenumbers
+pre-commit
 python-dotenv
+requests
+vital

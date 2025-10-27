@@ -6,7 +6,7 @@ import phonenumbers
 from phonenumbers import NumberParseException
 
 
-def validate_phone_number(number_str, country_code=None):
+def validate_phone_number(number_str, country_code='US'):
     """
     Validates a phone number using the phonenumbers library.
 
@@ -16,20 +16,26 @@ def validate_phone_number(number_str, country_code=None):
                                       to use if the number is missing a prefix.
 
     Returns:
-        bool: True if the number is valid, False otherwise.
+        string: formatted number if valid, None if not.
     """
+    if not number_str:
+        return None
+
     try:
         # Parse the number, which converts the string into a PhoneNumber object
         # The 'country_code' is a hint for non-international numbers
         parsed_number = phonenumbers.parse(number_str, country_code)
-        
+
         # Check if the number is valid based on length, prefix, and region.
-        return phonenumbers.is_valid_number(parsed_number)
-        
+        if phonenumbers.is_valid_number(parsed_number):
+            return str(phonenumbers.format_number(parsed_number, phonenumbers.PhoneNumberFormat.NATIONAL))
+        else:
+            return None
+
     except NumberParseException:
-        # This exception is raised if the string cannot be parsed at all 
+        # This exception is raised if the string cannot be parsed at all
         # (e.g., contains too many letters).
-        return False
+        return None
 
 def to_boolean_any(s):
     """
@@ -81,12 +87,12 @@ def convert_date_format(date_string):
     """
     # 12/12/12
     bits = date_string.split('/')
-    year = f"20{bits[2]}" if int(bits[2]) < 26 else f"19{bits[2]}"
-    
-    date_string = f"{bits[0]}/{bits[1]}/{year}"    
+    year = f"20{bits[2]}" if int(bits[2]) < 26 else bits[2]
+
+    date_string = f"{year}-{bits[0]}-{bits[1]}"
     try:
         # Parse the input date string
-        datetime_object = datetime.strptime(date_string, "%m/%d/%Y")
+        datetime_object = datetime.strptime(date_string, "%Y-%m-%d")
         # Format the datetime object to the new format
         new_date_string = datetime_object.strftime("%Y-%m-%d")
         return new_date_string
@@ -141,7 +147,7 @@ def generate_npi():
     # 1. Generate the first 9 digits. The first digit must be between 1 and 8.
     # The prefix 80840 is a constant part of the NPI calculation.
     prefix = '80840'
-    
+
     # Generate 9 random digits for the main identifier part.
     # The first digit of an NPI cannot be 0, so we start with a choice from 1-8.
     first_digit = str(random.randint(1, 8))
@@ -150,7 +156,7 @@ def generate_npi():
 
     # 2. Calculate the checksum using the Luhn algorithm.
     temp_npi = prefix + nine_digits
-    
+
     total = 0
     for i, digit_char in enumerate(reversed(temp_npi)):
         digit = int(digit_char)
@@ -176,13 +182,13 @@ def random_BreastDensity():
 
     random_ID = None
     BDs = {
-        'Result::BreastDensity::Dense': '32349', 
+        'Result::BreastDensity::Dense': '32349',
         'Result::BreastDensity::NonDense': '32350'
     }
-    
+
     BD = random.choice(list(BDs.keys()))
     random_ID = BDs[BD]
-    
+
     return random_ID
 
 def random_TCLifetimeRisk():
@@ -193,17 +199,17 @@ def random_TCLifetimeRisk():
         'Result::TCLifetimeRisk::High':         '32352',
         'Result::TCLifetimeRisk::Intermediate': '32353'
     }
-    
+
     TCLifetimeRisk = random.choice(list(TCLifetimeRisks.keys()))
     random_ID = TCLifetimeRisks[TCLifetimeRisk]
-    
+
     return random_ID
-                
+
 def random_BIRADS():
 
     random_ID = None
     BIRADS = {
-        'Result::BIRADS::0': '32343', 
+        'Result::BIRADS::0': '32343',
         'Result::BIRADS::1': '32344',
         'Result::BIRADS::2': '32345',
         'Result::BIRADS::3': '32346',
@@ -217,10 +223,9 @@ def random_BIRADS():
 def random_BAC():
     random_ID = None
     BACs = {
-        'Result::BAC::Absent': '32341', 
+        'Result::BAC::Absent': '32341',
         'Result::BAC::Present': '32342'
     }
     BAC = random.choice(list(BACs.keys()))
     random_ID = BACs[BAC]
     return random_ID
-
