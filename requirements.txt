@@ -1,3 +1,4 @@
+alive_progress
 email_validator
 names-generator
 phonenumbers
