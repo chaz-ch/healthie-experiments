@@ -59,3 +59,14 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# OK here is the ask, please and thank you!
+# Number of Patients that have accessed healthie. Maybe a breakdown by status
+# Created
+# Invited
+# Accessed
+# Count of number of patients that have responded to a provider in Healthie (2-way chat)
+# Number of clinician consult charts that have been created
+# Number of clinician consult charts that have been reviewed/signed
+# Number of order charts that have been created
+# Number of order charts that have been reviewed/signed

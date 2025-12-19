@@ -32,6 +32,8 @@ htmlcov/
 # Log and database files
 *.log
 *.sqlite3
+*.txt
+*.csv
 
 # Operating System Files
 .DS_Store

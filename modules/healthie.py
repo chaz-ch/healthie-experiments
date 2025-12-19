@@ -4,8 +4,33 @@ from pathlib import Path
 from typing import Optional, Dict, Any, List
 import os
 from dotenv import load_dotenv
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+)
+
 
 load_dotenv()
+
+# 2. The Professional Way (using tenacity)
+
+# If you are building a production app, the tenacity library is much cleaner. It handles "exponential backoff" (waiting longer after each fail), which is a best practice to avoid overwhelming a struggling server.
+
+# Installation: pip install tenacity
+# Python
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type(requests.exceptions.Timeout),
+)
+def fetch_data():
+    print("Attempting request...")
+    response = requests.get("https://api.example.com/data", timeout=2)
+    return response.json()
 
 
 class Healthie:
@@ -39,6 +64,11 @@ class Healthie:
             "AuthorizationSource": "API",
         }
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(requests.exceptions.Timeout),
+    )
     def _execute_request(
         self, query: str, variables: Optional[Dict[str, Any]] = None, timeout: int = 10
     ) -> Dict[str, Any]:
@@ -66,6 +96,11 @@ class Healthie:
         except requests.exceptions.RequestException as e:
             raise requests.exceptions.RequestException(f"API Request Error: {e}")
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type(requests.exceptions.Timeout),
+    )
     def _execute_upload_request(
         self, input_data: Dict[str, Any], files: Dict[str, Any], timeout: int = 10
     ) -> Dict[str, Any]:
@@ -367,6 +402,30 @@ query users(
             print(e)
             return {}
 
+    def karam_metric_data(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+query users(
+    $offset: Int
+    $page_size: Int
+) {
+    users(
+    offset: $offset
+    page_size: $page_size
+    ) {
+    id
+    email
+    accessed_account
+    dietitian_id
+    }
+}        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
     def list_users_completed_intake(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Executes a GraphQL mutation to CREATE a new resource.
@@ -388,6 +447,42 @@ query users(
     has_completed_intake_forms
     }
 }        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def list_users_notification_settings(
+        self, input_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to CREATE a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+
+        mutation = """
+        query users(
+            $offset: Int
+            $page_size: Int
+        ) {
+            users(
+            offset: $offset
+            page_size: $page_size
+            ) {
+            id
+            email
+            notification_setting {
+                id
+                send_message_emails
+                send_group_message_emails
+            }
+            }
+        }
+        """
 
         try:
             response = self._execute_request(mutation, input_data)
@@ -444,6 +539,7 @@ query users(
                 last_sign_in_at
                 requires_reactivation
                 signup_completed
+                dietitian_id
             }
         }
         """
@@ -568,6 +664,223 @@ query organizationMembers(
     is_active_provider
   }
 }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def get_all_users_paginated(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param keywords: The comma-separated string of keywords to search for.
+        """
+
+        mutation = """
+        query users(
+        $page_size: Int
+        $after: Cursor
+        $should_paginate: Boolean
+        ) {
+        users(page_size: $page_size,
+            should_paginate: $should_paginate
+        after: $after
+        ) {
+            accessed_account
+            active
+            any_incomplete_onboarding_steps
+            any_shared_courses
+            any_shared_documents
+            any_shared_incomplete_courses
+            any_unviewed_documents
+            archived_at
+            consented_to_labs
+            consents_required
+            created_at
+            cursor
+            dietitian_id
+            dob
+            doc_share_id
+            email
+            full_name
+            has_created_password
+            has_forms_to_complete
+            has_lab_orders
+            human_id
+            id
+            invite_code
+            is_patient
+            last_active
+            last_activity
+            last_conversation_id
+            last_sign_in_at
+            name
+            phone_number
+            record_identifier
+            requires_reactivation
+            set_password_link
+            signup_completed
+            skipped_email
+        }
+        usersCount
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def user_is_invited(self, input_data: Dict[str, Any]) -> bool:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+        variables = {
+            "org_level": False,
+            "should_paginate": True,
+            "patient_id": input_data.get("patient_id"),
+            "type": "other",
+        }
+
+        response = self.list_notifications_minimal(variables)
+
+        if "sentNotificationRecords" in response:
+            sent_notification_records = response["sentNotificationRecords"]
+
+            for notification_record in sent_notification_records:
+                notification_type = notification_record["notification_type"]
+                # notification_category = notification_record["category"]
+                # notification_target = notification_record["user_id"]
+                if notification_type == "client_invited_to_healthie":
+                    return True
+
+        return False
+
+    def check_user_tags_by_id(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Checks if a user has any of the provided Tag IDs.
+
+        Args:
+            user_id (str): The Healthie User ID.
+            tag_ids_to_check (list): A list of strings/ints representing Tag IDs.
+                                    e.g. ["101", "504"]
+
+        Returns:
+            dict: A dictionary containing:
+                - 'found_ids': A list of IDs the user actually possesses.
+                - 'missing_ids': A list of IDs the user does not have.
+                - 'has_any': Boolean, True if at least one tag matches.
+                - 'has_all': Boolean, True if ALL provided tags match.
+        """
+
+        query = """
+        query getUserTags($user_id: ID!) {
+        user(id: $user_id) {
+            id
+            active_tags {
+            id
+            name
+            }
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(query, input_data)
+            data = response.get("data", {})
+
+            if "errors" in data:
+                print(f"API Error: {data['errors'][0]['message']}")
+                return {}
+
+            user_data = data.get("user")
+            if not user_data:
+                print("User not found.")
+                return {}
+
+            # 2. Extract User's existing Tag IDs into a Set for fast lookup
+            # We convert everything to strings to ensure "123" matches 123
+            existing_tag_ids = {
+                str(tag["id"]) for tag in user_data.get("active_tags", [])
+            }
+
+            # 3. Process the tags we are looking for
+            target_ids = {str(tid) for tid in input_data.get("tag_ids_to_check", [])}
+
+            # 4. Calculate Intersection (Found) and Difference (Missing)
+            found_ids = list(target_ids.intersection(existing_tag_ids))
+            missing_ids = list(target_ids.difference(existing_tag_ids))
+
+            return {
+                "found_ids": found_ids,
+                "missing_ids": missing_ids,
+                "has_any": len(found_ids) > 0,
+                "has_all": len(missing_ids) == 0,
+            }
+
+        except Exception as e:
+            print(f"Request Error: {e}")
+            return {}
+
+    def get_notification_setting_id(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+        query findPatientNotificationSetting($patient_id: ID!) {
+        user(id: $patient_id) {
+            id
+            email
+            notification_setting {
+            id
+            send_message_emails
+            send_group_message_emails
+            }
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def disable_notification_setting(
+        self, input_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Executes a GraphQL mutation to modify a new resource.
+
+        :param input_data: The dictionary of data to pass as the input variable.
+        """
+
+        mutation = """
+        mutation disableMessageEmails($notificationSettingId: ID!) {
+        updateNotificationSetting(
+            input: {
+            id: $notificationSettingId
+            send_message_emails: false
+            send_group_message_emails: false
+            }
+        ) {
+            notificationSetting {
+            id
+            send_message_emails
+            send_group_message_emails
+            }
+            messages {
+            field
+            message
+            }
+        }
+        }
         """
 
         try:
@@ -870,53 +1183,43 @@ query organizationMembers(
             print(e)
             return {}
 
-    def create_note(self, variables: Dict[str, Any]) -> Dict[str, Any]:
-        createNoteInput = {
-            "input": {
-                "content": variables["content"],
-                "conversation_id": variables["conversation_id"],
-                "user_id": variables["conversation_id"],
-                "org_chat": variables["org_chat"],
-                "hide_org_chat_confirmation": variables["hide_org_chat_confirmation"],
-            }
-        }
-
-        # createNoteInput
-        # {
-        #     attached_audio: Upload
-        #     attached_document: Upload
-        #     attached_image: Upload
-        #     attached_image_string: String
-        #     content: String
-        #     conversation_id: String
-        #     created_at: String
-        #     hide_org_chat_confirmation: Boolean
-        #
-        #     """
-        #     True, if a note create action called in the organization chat context
-        #     """
-        #     org_chat: Boolean
-        #     scheduled_at: String
-        #     updated_at: String
-        #     user_id: String
-        # }
-
+    def create_note(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         mutation = """
-        mutation createNote($input: createNoteInput) {
-            createNote(input: $input) {
-                messages {
-                    field
-                    message
+            mutation createNote(
+            $user_id: String
+            $content: String
+            $conversation_id: String
+            $attached_image_string: String
+            $scheduled_at: String
+            $org_chat: Boolean
+            $hide_org_chat_confirmation: Boolean
+            ) {
+            createNote(
+                input: {
+                user_id: $user_id
+                content: $content # Content of the note
+                conversation_id: $conversation_id
+                attached_image_string: $attached_image_string
+                scheduled_at: $scheduled_at # for scheduling notes, time note will be sent
+                org_chat: $org_chat # Pass `true` when creating a note by someone who is not the conversation owner (e.g., by another provider on the client's care team)
+                hide_org_chat_confirmation: $hide_org_chat_confirmation # When True, will hide org chat confirmation modal
                 }
+            ) {
                 note {
-                    id
+                id
+                content
+                user_id
+                }
+                messages {
+                field
+                message
                 }
             }
-        }
+            }
         """
 
         try:
-            response = self._execute_request(mutation, createNoteInput)
+            response = self._execute_request(mutation, input_data)
             return response.get("data", {})
         except Exception as e:
             print(e)
@@ -926,27 +1229,29 @@ query organizationMembers(
         inputs = variables
 
         mutation = """
-query conversationMemberships(
-  $org_chat: Boolean
-  $provider_id: ID
-  $offset: Int
-  $page_size: Int
-) {
-  conversationMemberships(
-    org_chat: $org_chat
-    provider_id: $provider_id
-    offset: $offset
-    page_size: $page_size
-  ) {
-    conversation_id
-    display_name
-    convo {
-      id
-      patient_id
-      last_note_viewed_id
-    }
-  }
-}"""
+            query conversationMemberships(
+            $org_chat: Boolean
+            $provider_id: ID
+            $offset: Int
+            $page_size: Int
+            ) {
+            conversationMemberships(
+                org_chat: $org_chat
+                provider_id: $provider_id
+                offset: $offset
+                page_size: $page_size
+            ) {
+                id
+                conversation_id
+                display_name
+                convo {
+                id
+                patient_id
+                last_note_viewed_id
+                }
+            }
+            }
+        """
 
         response = self._execute_request(mutation, inputs)
 
@@ -956,29 +1261,157 @@ query conversationMemberships(
         inputs = variables
 
         mutation = """
-query notes(
-  $conversation_id: ID
-  $offset: Int
-  $page_size: Int
-) {
-  notes(
-    conversation_id: $conversation_id
-    offset: $offset
-    page_size: $page_size
-  ) {
-    created_at
-    creator { id }
-    content
-    id
-    is_autoresponse
-    user_id
-    viewed
-  }
-}"""
+            query notes(
+            $conversation_id: ID
+            $offset: Int
+            $page_size: Int
+            ) {
+            notes(
+                conversation_id: $conversation_id
+                offset: $offset
+                page_size: $page_size
+            ) {
+                created_at
+                creator { id }
+                content
+                id
+                is_autoresponse
+                user_id
+                viewed
+            }
+            }
+        """
 
         response = self._execute_request(mutation, inputs)
 
         return response.get("data", {})
+
+    def list_patient_conversationMemberships(
+        self, variables: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        inputs = variables
+
+        mutation = """
+            query conversationMemberships(
+            $client_id: String
+            $offset: Int
+            $page_size: Int
+            ) {
+            conversationMemberships(
+                client_id: $client_id
+                offset: $offset
+                page_size: $page_size
+            ) {
+                conversation_id
+                display_name
+                creator { id }
+                convo {
+                    id
+                    patient_id
+                    dietitian_id
+                    last_note_viewed_id
+                }
+            }
+            }
+        """
+
+        response = self._execute_request(mutation, inputs)
+
+        return response.get("data", {})
+
+    def mark_conversation_read(self, variables: Dict[str, Any]) -> Dict[str, Any]:
+        inputs = {"input": variables}
+
+        mutation = """
+        mutation updateConversationMembership(
+            $input: updateConversationMembershipInput
+            ) {
+            updateConversationMembership(input: $input) {
+                messages {
+                field
+                message
+                }
+            }
+        }
+        """
+
+        response = self._execute_request(mutation, inputs)
+
+        return response.get("data", {})
+
+    # appointment-related
+
+    def get_provider_appt_id(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+        query getAppointmentSettingId($provider_id: ID!) {
+        appointmentSetting(provider_id: $provider_id) {
+            id
+            hide_link
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def hide_email_links(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+        mutation hideEmailLinks($appointmentSettingId: ID!) {
+        updateAppointmentSetting(
+            input: {
+            id: $appointmentSettingId
+            hide_link: true
+            }
+        ) {
+            appointmentSetting {
+            id
+            hide_link
+            }
+            messages {
+            field
+            message
+            }
+        }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+    def disable_message_reminders(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        mutation = """
+        mutation disableMessageReminders($appointmentSettingId: ID!) {
+        updateAppointmentSetting(
+            input: {
+            id: $appointmentSettingId
+            message_reminders_enabled: false
+            }
+        ) {
+            appointmentSetting {
+            id
+            message_reminders_enabled
+            }
+            messages {
+            field
+            message
+            }
+        }
+        """
+
+        try:
+            response = self._execute_request(mutation, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
 
     # task-related
 
@@ -1395,6 +1828,42 @@ query chartNotes(
             print(e)
             return {}
 
+    def list_charts_by_status(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        query = """
+query chartNotes(
+  $chart_note_status: ChartNoteStatus
+  $should_paginate: Boolean
+  $after: Cursor
+) {
+  chartNotes(
+    chart_note_status: $chart_note_status
+    should_paginate: $should_paginate
+    after: $after
+  ) {
+    chart_note_status
+    created_at
+    cursor
+    filler {
+      id
+      name
+    }
+    finished
+    id
+    name
+    updated_at
+    user {
+      id
+    }
+    user_id
+  }
+}        """
+        try:
+            response = self._execute_request(query, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
     # Faxes
 
     def list_faxes(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -1484,3 +1953,84 @@ query sentNotificationRecords(
         except Exception as e:
             print(e)
             return {}
+
+    def list_notifications_minimal(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        query = """
+query sentNotificationRecords(
+  $org_level: Boolean
+  $patient_id: ID
+  $should_paginate: Boolean
+  $type: String
+) {
+  sentNotificationRecords(
+    org_level: $org_level
+    patient_id: $patient_id
+    should_paginate: $should_paginate
+    type: $type
+  ) {
+    id
+    notification_type
+  }
+}
+"""
+        try:
+            response = self._execute_request(query, input_data)
+            return response.get("data", {})
+        except Exception as e:
+            print(e)
+            return {}
+
+
+# query conversationMemberships(
+#   $active_status: String
+#   $client_id: String
+#   $conversation_type: String
+#   $keywords: String
+#   $notes_type: String
+#   $only_include_shared_memberships: Boolean
+#   $org_chat: Boolean
+#   $provider_id: ID
+#   $provider_ids: [ID]
+#   $read_status: String
+#   $order_by: ConversationMembershipOrderKeys
+#   $offset: Int
+#   $page_size: Int
+#   $after: Cursor
+# ) {
+#   conversationMemberships(
+#     active_status: $active_status
+#     client_id: $client_id
+#     conversation_type: $conversation_type
+#     keywords: $keywords
+#     notes_type: $notes_type
+#     only_include_shared_memberships: $only_include_shared_memberships
+#     org_chat: $org_chat
+#     provider_id: $provider_id
+#     provider_ids: $provider_ids
+#     read_status: $read_status
+#     order_by: $order_by
+#     offset: $offset
+#     page_size: $page_size
+#     after: $after
+#   ) {
+#     archived
+#     conversation_id
+#     conversation_role
+#     convo
+#     convo_updated_at
+#     created_at
+#     creator
+#     cursor
+#     display_avatar
+#     display_name
+#     display_name_and_initial
+#     display_other_user_first_name
+#     display_other_user_name
+#     id
+#     last_task
+#     updated_at
+#     user_id
+#     user_list_as_display_name
+#     viewed
+#   }
+# }
