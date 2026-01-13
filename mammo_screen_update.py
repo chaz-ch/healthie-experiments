@@ -19,7 +19,7 @@ ATHENA_QUERY = "select reporttype, status, email, birad, lifetimerisknbr, breast
 # Path to your CSV file
 NOTIFIED_USERS_FILE_PATH = "mammo_users_notified.txt"
 NOT_FOUND_USERS_FILE_PATH = "mammo_users_not_found.txt"
-BIRAD_TARGET_FILE_PATH = "mammo_screen_emails.txt"
+BIRAD_TARGET_FILE_PATH = "mammo_screen_emails.csv"
 
 # TARGET_ENV = "STAGE"
 TARGET_ENV = "PROD"
@@ -50,9 +50,11 @@ def main():
     rt_str = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     log = open(f"user_actions-{TARGET_ENV}-{rt_str}.txt", "a")
 
-    updated_count = 0
+    notified_count = 0
     error_count = 0
     row_index = 0
+    conversation_memberships_updated = []
+
     try:
         with alive_bar(len(mammo_target_users)) as bar:
             for user_email in mammo_target_users:
@@ -93,7 +95,6 @@ def main():
                         # get navigator conversation
                         for conversation in conversation_memberships:
                             conversation_id = conversation["conversation_id"]
-                            dietitian_id = conversation["convo"]["dietitian_id"]
 
                             variables = {
                                 "conversation_id": conversation["conversation_id"]
@@ -130,6 +131,17 @@ def main():
                                     response = H.create_note(variables)
                                     print(response, file=log)
                                     notified_users.append(str(user_email))
+                                    notified_count += 1
+                                    conversation_memberships_updated.append(
+                                        conversation_id
+                                    )
+
+                                    # Write updated conversation IDs to file
+                                    with open(
+                                        "conversation_memberships_updated.txt", "w"
+                                    ) as f:
+                                        for conv_id in conversation_memberships_updated:
+                                            f.write(f"{conv_id}\n")
 
                 else:
                     print(f"Skipping {user_email}, already processed.", file=log)
@@ -137,7 +149,7 @@ def main():
                 bar()
 
         print("Final tally")
-        print(f"updated: {updated_count}, errors: {error_count}")
+        print(f"chats added: {notified_count}, errors: {error_count}")
 
     except Exception as e:
         print(f"An error occurred: {e}")

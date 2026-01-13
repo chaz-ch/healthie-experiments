@@ -10,6 +10,8 @@ from tenacity import (
     wait_exponential,
     retry_if_exception_type,
 )
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 load_dotenv()
@@ -25,7 +27,9 @@ load_dotenv()
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
-    retry=retry_if_exception_type(requests.exceptions.Timeout),
+    retry=retry_if_exception_type(
+        (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+    ),
 )
 def fetch_data():
     print("Attempting request...")
@@ -64,10 +68,25 @@ class Healthie:
             "AuthorizationSource": "API",
         }
 
+        # configure a session with urllib3 Retry to handle transient HTTP errors
+        self.session = requests.Session()
+        retry_strategy = Retry(
+            total=5,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            backoff_factor=1,
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(requests.exceptions.Timeout),
+        retry=retry_if_exception_type(
+            (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+        ),
     )
     def _execute_request(
         self, query: str, variables: Optional[Dict[str, Any]] = None, timeout: int = 10
@@ -77,7 +96,7 @@ class Healthie:
             payload["variables"] = variables
 
         try:
-            response = requests.post(
+            response = self.session.post(
                 self.endpoint, json=payload, headers=self.headers, timeout=timeout
             )
             response.raise_for_status()
@@ -99,13 +118,15 @@ class Healthie:
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type(requests.exceptions.Timeout),
+        retry=retry_if_exception_type(
+            (requests.exceptions.Timeout, requests.exceptions.ConnectionError)
+        ),
     )
     def _execute_upload_request(
         self, input_data: Dict[str, Any], files: Dict[str, Any], timeout: int = 10
     ) -> Dict[str, Any]:
         try:
-            response = requests.post(
+            response = self.session.post(
                 str(self.endpoint),
                 data=input_data,
                 files=files,
@@ -662,6 +683,10 @@ query organizationMembers(
     email
     active
     is_active_provider
+    active_tags {
+      id
+      name
+    }
   }
 }
         """
@@ -682,13 +707,16 @@ query organizationMembers(
 
         mutation = """
         query users(
-        $page_size: Int
-        $after: Cursor
-        $should_paginate: Boolean
+            $page_size: Int
+            $after: Cursor
+            $should_paginate: Boolean
+            $filter_by_tags: [String]
         ) {
-        users(page_size: $page_size,
+        users(
+            page_size: $page_size,
             should_paginate: $should_paginate
-        after: $after
+            after: $after
+            filter_by_tags: $filter_by_tags
         ) {
             accessed_account
             active
@@ -725,6 +753,11 @@ query organizationMembers(
             set_password_link
             signup_completed
             skipped_email
+            active_tags {
+                id
+                name
+            }
+            group_name
         }
         usersCount
         }

@@ -65,6 +65,12 @@ def main():
                 if H.user_is_invited({"patient_id": user["id"]}):
                     invited_users[user["id"]] = user["email"]
 
+                print(
+                    f"Processing user ID: {user['id']} Email: {user['email']} Group: {user.get('group_name', 'N/A')}"
+                )
+                for tag in user.get("active_tags", []):
+                    print(f"  Tag: {tag['id']} - {tag['name']}")
+
             # GraphQL Query Error(s): Type mismatch on variable $client_id and argument client_id (ID / String)
             # response = H.list_patient_conversationMemberships({"client_id": user["id"]})
 
