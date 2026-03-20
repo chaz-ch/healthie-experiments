@@ -24,13 +24,15 @@ Results appear as additional columns in `received_fax_types.tsv` for side-by-sid
 
 ## Categories
 
-Exactly five allowed values:
+Exactly five allowed values (lowercase, intentionally different from the title-case values used by the existing keyword classifier in `document_type`):
 
 - `result - routine`
 - `result - urgent`
 - `scheduling`
 - `insurance`
 - `other`
+
+The `gemini_category` column uses this lowercase convention. No normalization is applied to align it with `document_type` — the difference is intentional to keep the two classifiers independently readable.
 
 ---
 
@@ -52,13 +54,42 @@ def classify_pdf_with_gemini(pdf_path: str) -> dict:
 }
 ```
 
+### SDK and package
+
+Use the **`google-genai`** package (import: `google.genai`), which is the current stable Gemini Python SDK as of 2025. Add `google-genai` to `requirements.txt`.
+
+Do **not** use the legacy `google-generativeai` package.
+
 ### Implementation
 
-1. Read PDF bytes from `pdf_path` and base64-encode them.
-2. Send to Gemini Flash via the `google-generativeai` SDK using inline `inline_data` with MIME type `application/pdf`.
-3. Prompt instructs Gemini to return a JSON object with exactly three fields: `category`, `patient_name`, `patient_dob`.
-4. Parse the JSON response. Normalize `patient_dob` to `YYYY-MM-DD` using `python-dateutil`.
-5. Validate that `category` is one of the 5 allowed values; if not, treat as `"error"`.
+1. Read PDF bytes from `pdf_path` and pass them inline using `types.Part.from_bytes(data=bytes, mime_type="application/pdf")`.
+2. Build the request with `client.models.generate_content(...)`, passing the inline PDF part alongside the prompt.
+3. Set `response_mime_type="application/json"` in `GenerationConfig` to force a clean JSON response (no markdown fencing). This makes `json.loads(response.text)` reliable.
+4. The JSON returned by the model uses the key `category` (as defined in the prompt); map this to `gemini_category` in the returned dict. Similarly map `patient_name` → `gemini_patient_name` and `patient_dob` → `gemini_patient_dob`.
+5. Normalize `gemini_patient_dob` to `YYYY-MM-DD` using `python-dateutil` if a value is present; leave as empty string if absent.
+6. Validate that `gemini_category` is one of the 5 allowed values; if not, treat as `"error"`.
+
+### Prompt
+
+```
+You are a medical document classifier. Analyze this fax and return a JSON object
+with exactly these three fields:
+
+{
+  "category": <one of: "result - routine", "result - urgent", "scheduling", "insurance", "other">,
+  "patient_name": <full name as a string, or "" if not found>,
+  "patient_dob": <date of birth in YYYY-MM-DD format, or "" if not found>
+}
+
+Classification rules:
+- "result - routine": diagnostic imaging or lab report with no urgent/critical findings
+- "result - urgent": diagnostic imaging or lab report with urgent or critical findings
+- "scheduling": notification that a patient has not yet scheduled an exam
+- "insurance": prior authorization request or insurance-related communication
+- "other": anything that does not fit the above categories
+
+Return only the JSON object. No explanation, no markdown, no extra text.
+```
 
 ### API key
 
@@ -66,16 +97,16 @@ Read from `GEMINI_API_KEY` environment variable via `python-dotenv` (already in 
 
 ### Error handling
 
-Any exception — API failure, malformed JSON, unexpected category value, missing env var — returns:
+Any exception — API failure, malformed JSON, unexpected category value, missing env var, unreadable file — logs the exception message to stderr with the fax ID for context, then returns:
 ```python
 {"gemini_category": "error", "gemini_patient_name": "", "gemini_patient_dob": ""}
 ```
-This ensures a single bad fax never aborts a full run.
+This ensures a single bad fax never aborts a full run, and failures are visible in the terminal output.
 
 ### Constraints
 
 - PDF file size limit: 20MB per inline request (largest fax in corpus is 464KB — well within limit).
-- Model: `gemini-2.0-flash` (or latest stable Flash equivalent).
+- Model: defined as a module-level constant `GEMINI_MODEL = "gemini-2.0-flash"` so it can be updated in one place. If `GEMINI_API_KEY` is missing, raise `ValueError` at module import time (fail fast) rather than discovering it on the first fax.
 - No caching: at ~762 faxes and negligible cost (~$0.03 total), caching adds complexity without benefit.
 
 ---
@@ -84,10 +115,11 @@ This ensures a single bad fax never aborts a full run.
 
 - Add import of `classify_pdf_with_gemini` from `modules.gemini_classifier`.
 - In `run_classify`, call `classify_pdf_with_gemini(pdf_path)` for each fax.
-- Add three new columns to the TSV output, placed immediately after `manual_category`:
+- Add three new columns to the TSV output, placed immediately after `manual_category` and before `confidence`:
   - `gemini_category`
   - `gemini_patient_name`
   - `gemini_patient_dob`
+- Update the header string, the `rows.append({...})` dict, and the row `f.write(...)` format string in `run_classify` to include these three fields in the correct position.
 - No changes to `run_discover`.
 
 ### Updated TSV column order
@@ -101,7 +133,7 @@ fax_id | document_type | manual_category | gemini_category | gemini_patient_name
 ## Dependencies
 
 Add to `requirements.txt`:
-- `google-generativeai`
+- `google-genai`
 
 ---
 
