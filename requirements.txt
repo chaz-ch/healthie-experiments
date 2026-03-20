@@ -1,9 +1,14 @@
 alive_progress
 boto3
 email_validator
+google-genai
 names-generator
+pdf2image
+pdfplumber
 phonenumbers
 pre-commit
+pytesseract
+python-dateutil
 python-dotenv
 requests
 ruff
