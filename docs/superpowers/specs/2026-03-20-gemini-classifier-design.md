@@ -115,17 +115,14 @@ This ensures a single bad fax never aborts a full run, and failures are visible 
 
 - Add import of `classify_pdf_with_gemini` from `modules.gemini_classifier`.
 - In `run_classify`, call `classify_pdf_with_gemini(pdf_path)` for each fax.
-- Add three new columns to the TSV output, placed immediately after `manual_category` and before `confidence`:
-  - `gemini_category`
-  - `gemini_patient_name`
-  - `gemini_patient_dob`
-- Update the header string, the `rows.append({...})` dict, and the row `f.write(...)` format string in `run_classify` to include these three fields in the correct position.
+- Add three new columns to the TSV output: `gemini_category` (after `manual_category`), `gemini_patient_name` (after `patient_name`), and `gemini_patient_dob` (after `patient_dob`).
+- Update the header string, the `rows.append({...})` dict, and the row `f.write(...)` format string in `run_classify` to include these three fields in the correct positions.
 - No changes to `run_discover`.
 
 ### Updated TSV column order
 
 ```
-fax_id | document_type | manual_category | gemini_category | gemini_patient_name | gemini_patient_dob | confidence | from_number | created_at | patient_name | patient_dob | healthie_id
+fax_id | document_type | confidence | manual_category | gemini_category | from_number | created_at | patient_name | gemini_patient_name | patient_dob | gemini_patient_dob | healthie_id
 ```
 
 ---
